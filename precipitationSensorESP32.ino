@@ -43,11 +43,17 @@
  * -) Initial version
  * 
  * Version v0.2 (18.07.2017)
+ * -) Hamming window option added
  * -) Changed bin masking to be 1 by default and changed binMaskCycles_table values
  * -) Statistics values magsAcc and magAVG added
  * -) Renamed doStatistics() to updateStatistics()
  * -) Added finalizeStatistics() for AVG calculation etc.
  * -) Added parameters to publish_compact()
+ * 
+ * Version v0.3 (19.07.2017)
+ * -) Changed "magAVG" from uint16_t to float
+ * -) Removed "magsAcc" from publishing since it does not add additional information
+ * -) Renamed readings to begin with their cathegory-type: "detectionsInGroup"->"GroupDetections", "peakInGroup"->"GroupMagPeak", "magAVGinGroup"->"GroupMagAVG"
  * 
 \***************************************************************************/
 
@@ -110,27 +116,39 @@ const uint8_t binGroupBoundary[] = {
 const uint8_t NR_OF_BIN_GROUPS = sizeof(binGroupBoundary) / sizeof(binGroupBoundary[0]);
 
 struct FFT_BIN {
-  uint16_t peakMag;                             // holds the peak-magnitude
+  uint16_t magPeak;                             // holds the peak-magnitude
   uint32_t detectionCtr;                        // counts when bin exceets detection threshold
 } bin[NR_OF_BINS];
 
 struct BINGROUP {
-  uint16_t peakMag;                             // holds the magnitude value of the peak-bin
+  uint16_t magPeak;                             // holds the magnitude value of the peak-bin
   uint32_t binDetectionCtr;                     // counts EVERY bin inside the group that exceets the detection threshold
   uint32_t magsAcc;                             // accumulated magnitudes
-  uint16_t magAVG;
+  float magAVG;                                 // magnitude average (needs finilizeStatistics() call to be calculated
 } binGroup[NR_OF_BIN_GROUPS];
 
 
 // *****************************************
 // *****************************************
 // *****************************************
+//
+// For testing, ADC-samples can be overwritten by simulated waves
+// The total amplitude must be withing a 10-bit range (-512...+511)
+// Notice, that raindrops occupy only a fraction of the sample-time depending on their speed.
+//
+//#define SIMULATE
+//
 void IRAM_ATTR onTimer()
 {
   int16_t data;
   static uint16_t sampleNr;
 
-  data = analogRead(ADC_PIN_NR);
+#ifdef SIMULATE
+    data = 2048;
+    data += 2047 * sin((2 * 3.1415 * i * 20) / NR_OF_SAMPLES);
+#else
+    data = analogRead(ADC_PIN_NR);
+#endif
 
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 

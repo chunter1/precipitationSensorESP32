@@ -48,7 +48,7 @@ void updateStatistics()
 {
   static uint8_t binMaskCycles[NR_OF_BINS];
   uint16_t mag;
-  uint16_t magMax;
+  uint16_t magPeak;
   uint8_t lowerBinBoundary;
   uint8_t upperBinBoundary;
   
@@ -56,7 +56,7 @@ void updateStatistics()
   // run through all bin-groups
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
-    magMax = 0;
+    magPeak = 0;
     
     if (binGroupNr == 0)
       lowerBinBoundary = 0;
@@ -70,11 +70,11 @@ void updateStatistics()
     {
       mag = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
 
-      if (mag > magMax)
-        magMax = mag;
+      if (mag > magPeak)
+        magPeak = mag;
 
-      if (mag > bin[binNr].peakMag)
-        bin[binNr].peakMag = mag;
+      if (mag > bin[binNr].magPeak)
+        bin[binNr].magPeak = mag;
 
        binGroup[binGroupNr].magsAcc += mag;        // summ up the magnitude of all FFT-bins inside a group
 
@@ -105,8 +105,8 @@ void updateStatistics()
       }
     }
 
-    if (magMax > binGroup[binGroupNr].peakMag)
-      binGroup[binGroupNr].peakMag= magMax;
+    if (magPeak > binGroup[binGroupNr].magPeak)
+      binGroup[binGroupNr].magPeak= magPeak;
   }
 }
 
@@ -118,9 +118,9 @@ void finalizeStatistics()
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
     if (binGroupNr == 0)
-      binGroup[binGroupNr].magAVG = binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[0] + 1);
+      binGroup[binGroupNr].magAVG = (float)binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[0] + 1);
     else
-      binGroup[binGroupNr].magAVG = binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[binGroupNr] - binGroupBoundary[binGroupNr - 1]);
+      binGroup[binGroupNr].magAVG = (float)binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[binGroupNr] - binGroupBoundary[binGroupNr - 1]);
   }
 }
 
@@ -133,13 +133,13 @@ void resetStatistics()
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
     bin[binNr].detectionCtr = 0;
-    bin[binNr].peakMag = 0;
+    bin[binNr].magPeak = 0;
   }
 
   // group-level statistics
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
-    binGroup[binGroupNr].peakMag = 0;
+    binGroup[binGroupNr].magPeak = 0;
     binGroup[binGroupNr].binDetectionCtr = 0;
     binGroup[binGroupNr].magsAcc = 0;
     binGroup[binGroupNr].magAVG = 0;

@@ -97,7 +97,7 @@ void publish_compact(char* dummyName)
   url += String(dummyName);
   url += "%20";
 
-  url += "detectionsInGroup";
+  url += "GroupDetections";
     
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
@@ -111,12 +111,12 @@ void publish_compact(char* dummyName)
   url += String(dummyName);
   url += "%20";
 
-  url += "peakInGroup%20";
+  url += "GroupMagPeak%20";
     
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
     url += "%20";
-    url += String(binGroup[binGroupNr].peakMag);
+    url += String(binGroup[binGroupNr].magPeak);
   }
   url += "%3B";
 
@@ -125,21 +125,7 @@ void publish_compact(char* dummyName)
   url += String(dummyName);
   url += "%20";
 
-  url += "magsAccInGroup%20";
-    
-  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
-  {
-    url += "%20";
-    url += String(binGroup[binGroupNr].magsAcc);
-  }
-  url += "%3B";
-
-
-  url += "setreading%20";
-  url += String(dummyName);
-  url += "%20";
-
-  url += "magAVGinGroup%20";
+  url += "GroupMagAVG%20";
     
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
@@ -158,15 +144,15 @@ void publish_compact(char* dummyName)
 void publish_binGroups(char* dummyName)
 {
   const uint8_t NR_OF_TRANSFERS = 2;
-  uint16_t magMax;
+  uint16_t magPeak;
   char str[12];
   
   // find peak value for scaling
-  magMax = 0;
+  magPeak = 0;
   for (uint16_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
-    if (binGroup[binGroupNr].peakMag > magMax)
-      magMax = binGroup[binGroupNr].peakMag;
+    if (binGroup[binGroupNr].magPeak > magPeak)
+      magPeak = binGroup[binGroupNr].magPeak;
   }
 
   // transfer occurrence counter and maximum value of each FFT-bin (except DC)
@@ -188,14 +174,14 @@ void publish_binGroups(char* dummyName)
   
       for (uint8_t x = 0; x < NR_OF_BARS; x++)
       {
-        if ((x < ((NR_OF_BARS * binGroup[binGroupNr].peakMag) / magMax)) && (magMax > 0))
+        if ((x < ((NR_OF_BARS * binGroup[binGroupNr].magPeak) / magPeak)) && (magPeak > 0))
           url += "|";
         else
           url += ".";
       }
         
       url += "%20";
-      url += String(binGroup[binGroupNr].peakMag);
+      url += String(binGroup[binGroupNr].magPeak);
   
       url += "%20";
       url += String(binGroup[binGroupNr].binDetectionCtr);
@@ -272,15 +258,15 @@ void publish_bins_count(char *dummyName)
 void publish_bins_mag(char *dummyName)
 {
   const uint8_t NR_OF_TRANSFERS = 16;
-  uint16_t magMax;
+  uint16_t magPeak;
   char str[10];
 
   // find peak value for scaling
-  magMax = 0;
+  magPeak = 0;
   for (uint16_t binNr = 1; binNr < NR_OF_BINS; binNr++)
   {
-    if (bin[binNr].peakMag > magMax)
-      magMax = bin[binNr].peakMag;
+    if (bin[binNr].magPeak > magPeak)
+      magPeak = bin[binNr].magPeak;
   }
 
   // transfer occurrence counter and maximum value of each FFT-bin (except DC)
@@ -304,9 +290,9 @@ void publish_bins_mag(char *dummyName)
 
       for (uint8_t x = 0; x < NR_OF_BARS; x++)
       {
-        if (magMax > 0)
+        if (magPeak > 0)
         {
-          if (x < ((NR_OF_BARS * bin[binNr].peakMag) / magMax))
+          if (x < ((NR_OF_BARS * bin[binNr].magPeak) / magPeak))
             url += "|";
           else
             url += ".";
@@ -316,7 +302,7 @@ void publish_bins_mag(char *dummyName)
       }
 
       url += "%20";
-      url += String(bin[binNr].peakMag);
+      url += String(bin[binNr].magPeak);
       
       url += "%20";
       url += String(bin[binNr].detectionCtr);
