@@ -63,12 +63,12 @@ void consoleOut_bins(uint16_t startIdx, uint16_t stopIdx)
     
     for (uint8_t x = 0; x < BARS; x++)
     {
-      if (x < ((bin[binNr].peakMag * BARS) / 16383))
+      if (x < ((bin[binNr].magPeak * BARS) / 16383))
         Serial.printf("#");
       else
         Serial.printf("-");
     }
 
-    Serial.printf(" %d\n", bin[binNr].peakMag);
+    Serial.printf(" %d\n", bin[binNr].magPeak);
   }
 }

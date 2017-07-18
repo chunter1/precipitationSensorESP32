@@ -50,10 +50,13 @@
  * -) Added finalizeStatistics() for AVG calculation etc.
  * -) Added parameters to publish_compact()
  * 
- * Version v0.3 (19.07.2017)
+ * Version v0.3 (18.07.2017)
  * -) Changed "magAVG" from uint16_t to float
  * -) Removed "magsAcc" from publishing since it does not add additional information
  * -) Renamed readings to begin with their cathegory-type: "detectionsInGroup"->"GroupDetections", "peakInGroup"->"GroupMagPeak", "magAVGinGroup"->"GroupMagAVG"
+ * 
+ * Version v0.4 (18.07.2017)
+ * -) Bugfix
  * 
 \***************************************************************************/
 
