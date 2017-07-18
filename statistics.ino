@@ -1,6 +1,6 @@
 /***************************************************************************\
  * 
- * Arduino project "precipitationSensorESP32" © Copyright huawatuam@gmail.com 
+ * Arduino project "precipitationSensor" © Copyright huawatuam@gmail.com 
  * 
  * This program is free software. You can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,28 +17,34 @@
 \***************************************************************************/
 
 const uint8_t binMaskCycles_table[] = {
-  0, 114, 57, 38, 28, 22, 19, 16,
-  14, 12, 11, 10, 9, 8, 8, 7,
-  7, 6, 6, 6, 5, 5, 5, 4,
-  4, 4, 4, 4, 4, 3, 3, 3,
-  3, 3, 3, 3, 3, 3, 3, 2,
+  0, 161, 80, 53, 40, 32, 26, 23,
+  20, 17, 16, 14, 13, 12, 11, 10,
+  10, 9, 8, 8, 8, 7, 7, 7,
+  6, 6, 6, 5, 5, 5, 5, 5,
+  5, 4, 4, 4, 4, 4, 4, 4,
+  4, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 2, 2,
   2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 2, 2, 2,
-  2, 2, 1, 1, 1, 1, 1, 1,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  2, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1
+  1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1
 };
 const uint16_t SIZE_OF_LOCK_CYCLE_TABLE = sizeof(binMaskCycles_table) / sizeof(binMaskCycles_table[0]);
 
 // **************************************************
 // **************************************************
 // **************************************************
-void doStatistics()
+void updateStatistics()
 {
   static uint8_t binMaskCycles[NR_OF_BINS];
   uint16_t mag;
@@ -52,13 +58,13 @@ void doStatistics()
   {
     magMax = 0;
     
-    if (binGroupNr > 0)
-      lowerBinBoundary = binGroupBoundary[binGroupNr - 1] + 1;
-    else
+    if (binGroupNr == 0)
       lowerBinBoundary = 0;
+    else
+      lowerBinBoundary = binGroupBoundary[binGroupNr - 1] + 1;
 
     upperBinBoundary = binGroupBoundary[binGroupNr];
-    
+
     // scan all FFT-bins within the group
     for (uint16_t binNr = lowerBinBoundary; binNr <= upperBinBoundary; binNr++)
     {
@@ -70,7 +76,9 @@ void doStatistics()
       if (mag > bin[binNr].peakMag)
         bin[binNr].peakMag = mag;
 
-      //binMaskCycles[binNr] = 0;             // disable masking for testing
+       binGroup[binGroupNr].magsAcc += mag;        // summ up the magnitude of all FFT-bins inside a group
+
+      //binMaskCycles[binNr] = 0;                 // disable masking for testing
 
       // speed-dependent masking
       if (binMaskCycles[binNr] > 0)
@@ -86,16 +94,33 @@ void doStatistics()
             binGroup[binGroupNr].binDetectionCtr++;
             totalDetectionsCtr++;
           }
-          
-          // mask out particles that are longer than 1.5 snapshot-periods in FOV
+
+          // mask out bin in next cycle
+          binMaskCycles[binNr] = 1;
+
+          // avoid multiple detections/counts of same "signal-event" spread across multiple FFT windows due to low-speed particles
           if (binNr < SIZE_OF_LOCK_CYCLE_TABLE)
-            binMaskCycles[binNr] = binMaskCycles_table[binNr];
+            binMaskCycles[binNr] += binMaskCycles_table[binNr];
         }
       }
     }
 
     if (magMax > binGroup[binGroupNr].peakMag)
       binGroup[binGroupNr].peakMag= magMax;
+  }
+}
+
+// **************************************************
+// **************************************************
+// **************************************************
+void finalizeStatistics()
+{
+  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
+  {
+    if (binGroupNr == 0)
+      binGroup[binGroupNr].magAVG = binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[0] + 1);
+    else
+      binGroup[binGroupNr].magAVG = binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[binGroupNr] - binGroupBoundary[binGroupNr - 1]);
   }
 }
 
@@ -116,6 +141,8 @@ void resetStatistics()
   {
     binGroup[binGroupNr].peakMag = 0;
     binGroup[binGroupNr].binDetectionCtr = 0;
+    binGroup[binGroupNr].magsAcc = 0;
+    binGroup[binGroupNr].magAVG = 0;
   }
 
   ADCpeakSample = 0;

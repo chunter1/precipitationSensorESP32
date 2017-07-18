@@ -1,6 +1,6 @@
 /***************************************************************************\
  * 
- * Arduino project "precipitationSensorESP32" © Copyright huawatuam@gmail.com 
+ * Arduino project "precipitationSensor" © Copyright huawatuam@gmail.com 
  * 
  * This program is free software. You can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -119,6 +119,35 @@ void publish_compact(char* dummyName)
     url += String(binGroup[binGroupNr].peakMag);
   }
   url += "%3B";
+
+
+  url += "setreading%20";
+  url += String(dummyName);
+  url += "%20";
+
+  url += "magsAccInGroup%20";
+    
+  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
+  {
+    url += "%20";
+    url += String(binGroup[binGroupNr].magsAcc);
+  }
+  url += "%3B";
+
+
+  url += "setreading%20";
+  url += String(dummyName);
+  url += "%20";
+
+  url += "magAVGinGroup%20";
+    
+  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
+  {
+    url += "%20";
+    url += String(binGroup[binGroupNr].magAVG);
+  }
+  url += "%3B";
+  
       
   footer();
 }

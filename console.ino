@@ -1,6 +1,6 @@
 /***************************************************************************\
  * 
- * Arduino project "precipitationSensorESP32" © Copyright huawatuam@gmail.com 
+ * Arduino project "precipitationSensor" © Copyright huawatuam@gmail.com 
  * 
  * This program is free software. You can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 void consoleOut_samples(uint16_t startIdx, uint16_t stopIdx)
 {
-  Serial.printf("\nSnapshots: %d   ADC-offset: %d\n", snapshotCtr, ADCoffset);
+  Serial.printf("\nSnapshots: %d   ADC-offset: %d   Clipping: %d   ADCpeak: %d\n", snapshotCtr, ADCoffset, clippingCtr, ADCpeakSample);
 
   if ((startIdx >= RINGBUFFER_SIZE) || (stopIdx >= RINGBUFFER_SIZE))
   {

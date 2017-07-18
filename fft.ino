@@ -1,6 +1,6 @@
 /***************************************************************************\
  * 
- * Arduino project "precipitationSensorESP32" © Copyright huawatuam@gmail.com 
+ * Arduino project "precipitationSensor" © Copyright huawatuam@gmail.com 
  * 
  * This program is free software. You can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

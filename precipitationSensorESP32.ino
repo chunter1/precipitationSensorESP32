@@ -1,6 +1,6 @@
 /***************************************************************************\
  * 
- * Arduino project "precipitationSensorESP32" © Copyright huawatuam@gmail.com
+ * Arduino project "precipitationSensor" © Copyright huawatuam@gmail.com
  * 
  * This program is free software. You can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  * 
  * Project description:
  * ====================
- * This project uses an IMP-165 radarsensor with preamp and an ESP32 to classify
+ * This project uses an IMP-165 radarsensor with preamp and an ESP8266 to classify
  * the type of precipitation/hydrometeors by measuring the speed/doppler frequency.
  * Working on 24 GHz, the radar sensor gives a doppler frequency of 161 Hz per 1 m/s speed.
  * Using a 45° tilted radar sensor with the following FFT settings, the hydrometeor speed
@@ -37,6 +37,18 @@
  * ===========================
  * ESP32 CPU clock speed: 80 MHz
  * 
+ * Version history:
+ * ================
+ * Version v0.1 (16.07.2017)
+ * -) Initial version
+ * 
+ * Version v0.2 (18.07.2017)
+ * -) Changed bin masking to be 1 by default and changed binMaskCycles_table values
+ * -) Statistics values magsAcc and magAVG added
+ * -) Renamed doStatistics() to updateStatistics()
+ * -) Added finalizeStatistics() for AVG calculation etc.
+ * -) Added parameters to publish_compact()
+ * 
 \***************************************************************************/
 
 #include <WiFi.h>
@@ -44,19 +56,19 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-#define START_DELAY_s                     5                               // Delay before application starts for "emergency"-OTA in case of blocking application code
+#define START_DELAY_s                     5                                // Delay before application starts for "emergency"-OTA in case of blocking application code
 
 #define PUBLISHING_INTERVAL_s             60
-#define DETECTION_THRESHOLD               90                              // Detection threshold highly depends on gain and sensor->drop distance
+#define DETECTION_THRESHOLD               90                               // Detection threshold highly depends on gain and sensor->drop distance
 
 #define ADC_PIN_NR                        34
+#define DEBUG_GPIO_ISR                    5
+#define DEBUG_GPIO_MAIN                   23
 
-#define NR_OF_SAMPLES_bit                 9                               // DO NOT MODIFY - Number of samples in [bits] e.g. 9 bits = 512 samples
+#define NR_OF_SAMPLES_bit                 9                                 // DO NOT MODIFY - Number of samples in [bits] e.g. 9 bits = 512 samples
 #define NR_OF_SAMPLES                     (1 << NR_OF_SAMPLES_bit)
 #define NR_OF_BINS                        (NR_OF_SAMPLES >> 1)
 
-#define DEBUG_GPIO_ISR                    4
-#define DEBUG_GPIO_MAIN                   23
 
 // Wifi settings
 const char* ssid = "yourSSID";
@@ -76,15 +88,18 @@ volatile int16_t sampleRB[RINGBUFFER_SIZE];
 volatile uint16_t processSampleNr;
 
 uint32_t snapshotCtr;
-uint32_t clippingCtr;
+uint8_t snapProcessed_flag;
+uint8_t clippingCtr;
 uint16_t ADCpeakSample;
-int16_t ADCoffset;
 
 int16_t re[NR_OF_SAMPLES];
 int16_t im[NR_OF_SAMPLES];
 
+// =========== statistics variables
+
 uint32_t totalDetectionsCtr;
 uint16_t processSampleNr_tmp;
+int32_t ADCoffset;
 
 const uint8_t binGroupBoundary[] = {
   7,  15,  23,  31,  39,  47,  55,  63,
@@ -102,6 +117,8 @@ struct FFT_BIN {
 struct BINGROUP {
   uint16_t peakMag;                             // holds the magnitude value of the peak-bin
   uint32_t binDetectionCtr;                     // counts EVERY bin inside the group that exceets the detection threshold
+  uint32_t magsAcc;                             // accumulated magnitudes
+  uint16_t magAVG;
 } binGroup[NR_OF_BIN_GROUPS];
 
 
@@ -117,7 +134,7 @@ void IRAM_ATTR onTimer()
 
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 
-  sampleRB[sampleNr++] = data - 0x0800;
+  sampleRB[sampleNr++] = data - 2048;
   
   if ((sampleNr == 256) || (sampleNr == 512) || (sampleNr == 768) || (sampleNr == 1024))
   {
@@ -225,25 +242,25 @@ void loop()
       snapshotCtr++;
     
       processSamples(processSampleNr_tmp);
-      doStatistics();
+      updateStatistics();
     
-      if (snapshotCtr >= (40 * PUBLISHING_INTERVAL_s))                  // snapshot rate = 40 snapshots/s
+      if (snapshotCtr >= (40 * PUBLISHING_INTERVAL_s))                  // 1/0,025 ms = 40 snapshots/s
       {
+        finalizeStatistics();
+        
         if (WiFi.status() != WL_CONNECTED)
           WiFiStart();
 
-        // ************* Output debug information on UART
         //consoleOut_samples(0, 32);
-        //consoleOut_bins(0, 32);
-
-        // ************* Publishing functions
+        //consoleOut_bins(0, 40);
+    
         publish_compact("PRECIPITATION_SENSOR");
         //publish_bins_count("PRECIPITATION_SENSOR_BINS_COUNT");
         //publish_bins_mag("PRECIPITATION_SENSOR_BINS_MAG");
         //publish_binGroups("PRECIPITATION_SENSOR_BIN_GROUPS");
-
+    
         resetStatistics();
-
+    
         snapshotCtr = 0;
       }
         
