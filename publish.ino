@@ -102,7 +102,7 @@ void publish_compact(char* dummyName)
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
     url += "%20";  
-    url += String(binGroup[binGroupNr].binDetectionCtr);
+    url += String(binGroup[binGroupNr].detections);
   }
   url += "%3B";
 
@@ -184,7 +184,7 @@ void publish_binGroups(char* dummyName)
       url += String(binGroup[binGroupNr].magPeak);
   
       url += "%20";
-      url += String(binGroup[binGroupNr].binDetectionCtr);
+      url += String(binGroup[binGroupNr].detections);
       
       url += "%3B";
     }
@@ -206,8 +206,8 @@ void publish_bins_count(char *dummyName)
   countMax = 0;
   for (uint16_t binNr = 1; binNr < NR_OF_BINS; binNr++)
   {
-    if (bin[binNr].detectionCtr > countMax)
-      countMax = bin[binNr].detectionCtr;
+    if (bin[binNr].detections > countMax)
+      countMax = bin[binNr].detections;
   }
 
   // transfer occurrence counter and maximum value of each FFT-bin (except DC)
@@ -233,7 +233,7 @@ void publish_bins_count(char *dummyName)
       {
         if (countMax > 0)
         {
-          if (x < ((NR_OF_BARS * bin[binNr].detectionCtr) / countMax))
+          if (x < ((NR_OF_BARS * bin[binNr].detections) / countMax))
             url += "|";
           else
             url += ".";
@@ -243,7 +243,7 @@ void publish_bins_count(char *dummyName)
       }
 
       url += "%20";
-      url += String(bin[binNr].detectionCtr);
+      url += String(bin[binNr].detections);
 
       url += "%3B";      
     }
@@ -305,7 +305,7 @@ void publish_bins_mag(char *dummyName)
       url += String(bin[binNr].magPeak);
       
       url += "%20";
-      url += String(bin[binNr].detectionCtr);
+      url += String(bin[binNr].detections);
 
       url += "%3B";      
     }

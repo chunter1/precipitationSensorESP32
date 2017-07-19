@@ -58,7 +58,7 @@ void processSamples(uint16_t lastSampleIdx)
   }
 
   hannWindow(re, NR_OF_SAMPLES_bit);
-  
+
   FFT(re, im, NR_OF_SAMPLES_bit);
 }
 

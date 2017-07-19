@@ -16,14 +16,23 @@
  * 
 \***************************************************************************/
 
-const uint8_t binMaskCycles_table[] = {
-  0, 161, 80, 53, 40, 32, 26, 23,
-  20, 17, 16, 14, 13, 12, 11, 10,
-  10, 9, 8, 8, 8, 7, 7, 7,
-  6, 6, 6, 5, 5, 5, 5, 5,
-  5, 4, 4, 4, 4, 4, 4, 4,
-  4, 3, 3, 3, 3, 3, 3, 3,
-  3, 3, 3, 3, 3, 3, 2, 2,
+const uint8_t binMaskCyclesPerMeter_table[] = {
+  0, 228, 114, 76, 57, 46, 38, 33, 
+  29, 25, 23, 21, 19, 18, 16, 15, 
+  14, 13, 13, 12, 11, 11, 10, 10, 
+  10, 9, 9, 8, 8, 8, 8, 7, 
+  7, 7, 7, 7, 6, 6, 6, 6,
+  6, 6, 5, 5, 5, 5, 5, 5,
+  5, 5, 5, 4, 4, 4, 4, 4,
+  4, 4, 4, 4, 4, 4, 4, 4,
+  4, 4, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 3, 3, 3, 3,
+  3, 3, 3, 3, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2,
+  2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 2, 2, 2,
@@ -37,9 +46,11 @@ const uint8_t binMaskCycles_table[] = {
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1
+  1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1
 };
-const uint16_t SIZE_OF_LOCK_CYCLE_TABLE = sizeof(binMaskCycles_table) / sizeof(binMaskCycles_table[0]);
+const uint16_t SIZE_OF_LOCK_CYCLE_TABLE = sizeof(binMaskCyclesPerMeter_table) / sizeof(binMaskCyclesPerMeter_table[0]);
 
 // **************************************************
 // **************************************************
@@ -47,66 +58,42 @@ const uint16_t SIZE_OF_LOCK_CYCLE_TABLE = sizeof(binMaskCycles_table) / sizeof(b
 void updateStatistics()
 {
   static uint8_t binMaskCycles[NR_OF_BINS];
-  uint16_t mag;
+  uint16_t mag[NR_OF_BINS];
   uint16_t magPeak;
-  uint8_t lowerBinBoundary;
-  uint8_t upperBinBoundary;
-  
 
-  // run through all bin-groups
-  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
+
+  // Bin-level statistics (exclude DC-bin)
+  for (uint16_t binNr = 1; binNr < NR_OF_BINS; binNr++)
   {
-    magPeak = 0;
-    
-    if (binGroupNr == 0)
-      lowerBinBoundary = 0;
-    else
-      lowerBinBoundary = binGroupBoundary[binGroupNr - 1] + 1;
+    mag[binNr] = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
 
-    upperBinBoundary = binGroupBoundary[binGroupNr];
+    // peak
+    if (mag[binNr] > bin[binNr].magPeak)
+      bin[binNr].magPeak = mag[binNr];
 
-    // scan all FFT-bins within the group
-    for (uint16_t binNr = lowerBinBoundary; binNr <= upperBinBoundary; binNr++)
+    // sum (for AVG)
+    bin[binNr].magSum += mag[binNr];
+
+    //binMaskCycles[binNr] = 0;                 // disable masking for testing
+
+    // speed-dependent masking
+    if (binMaskCycles[binNr] > 0)
     {
-      mag = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
-
-      if (mag > magPeak)
-        magPeak = mag;
-
-      if (mag > bin[binNr].magPeak)
-        bin[binNr].magPeak = mag;
-
-       binGroup[binGroupNr].magsAcc += mag;        // summ up the magnitude of all FFT-bins inside a group
-
-      //binMaskCycles[binNr] = 0;                 // disable masking for testing
-
-      // speed-dependent masking
-      if (binMaskCycles[binNr] > 0)
+      binMaskCycles[binNr]--;
+    } else {
+      if (mag[binNr] > DETECTION_THRESHOLD)
       {
-        binMaskCycles[binNr]--;
-      } else {
-        if (mag > DETECTION_THRESHOLD)
-        {
-          // ignore DC-bin
-          if (binNr > 0)
-          {
-            bin[binNr].detectionCtr++;
-            binGroup[binGroupNr].binDetectionCtr++;
-            totalDetectionsCtr++;
-          }
+        bin[binNr].detections++;
+        totalDetectionsCtr++;
+        
+        // always mask out bin in next cycle
+        binMaskCycles[binNr] = 1;
 
-          // mask out bin in next cycle
-          binMaskCycles[binNr] = 1;
-
-          // avoid multiple detections/counts of same "signal-event" spread across multiple FFT windows due to low-speed particles
-          if (binNr < SIZE_OF_LOCK_CYCLE_TABLE)
-            binMaskCycles[binNr] += binMaskCycles_table[binNr];
-        }
+        // avoid multiple detections/counts of same "signal-event" spread across multiple FFT windows due to low-speed particles
+        if (binNr < SIZE_OF_LOCK_CYCLE_TABLE)
+          binMaskCycles[binNr] += FOV_m * binMaskCyclesPerMeter_table[binNr];
       }
     }
-
-    if (magPeak > binGroup[binGroupNr].magPeak)
-      binGroup[binGroupNr].magPeak= magPeak;
   }
 }
 
@@ -115,12 +102,33 @@ void updateStatistics()
 // **************************************************
 void finalizeStatistics()
 {
+  uint32_t magSumGroup;
+  
+  // bin-level statistic
+  for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
+  {
+    bin[binNr].magAVG = bin[binNr].magSum / snapshotCtr;
+  }
+  
+  // group-level statistics
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
-    if (binGroupNr == 0)
-      binGroup[binGroupNr].magAVG = (float)binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[0] + 1);
-    else
-      binGroup[binGroupNr].magAVG = (float)binGroup[binGroupNr].magsAcc / snapshotCtr / (binGroupBoundary[binGroupNr] - binGroupBoundary[binGroupNr - 1]);
+    magSumGroup = 0;
+    binGroup[binGroupNr].magPeak = 0;
+    binGroup[binGroupNr].detections = 0;
+    
+    // scan through all bins within the group
+    for (uint16_t binNr = binGroupBoundaries.firstBin[binGroupNr]; binNr <= binGroupBoundaries.lastBin[binGroupNr]; binNr++)
+    {
+      magSumGroup += bin[binNr].magSum;
+
+      if (bin[binNr].magPeak > binGroup[binGroupNr].magPeak) 
+        binGroup[binGroupNr].magPeak = bin[binNr].magPeak;
+
+      binGroup[binGroupNr].detections += bin[binNr].detections;
+    }
+    
+    binGroup[binGroupNr].magAVG = (float)magSumGroup / snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
   }
 }
 
@@ -132,17 +140,19 @@ void resetStatistics()
   // bin-level statistic
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
-    bin[binNr].detectionCtr = 0;
+    bin[binNr].magSum = 0;
+    bin[binNr].magAVG = 0;
     bin[binNr].magPeak = 0;
+    bin[binNr].detections = 0;
   }
 
   // group-level statistics
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
-    binGroup[binGroupNr].magPeak = 0;
-    binGroup[binGroupNr].binDetectionCtr = 0;
-    binGroup[binGroupNr].magsAcc = 0;
+    binGroup[binGroupNr].magSum = 0;
     binGroup[binGroupNr].magAVG = 0;
+    binGroup[binGroupNr].magPeak = 0;
+    binGroup[binGroupNr].detections = 0;
   }
 
   ADCpeakSample = 0;

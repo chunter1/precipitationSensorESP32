@@ -45,18 +45,22 @@
  * Version v0.2 (18.07.2017)
  * -) Hamming window option added
  * -) Changed bin masking to be 1 by default and changed binMaskCycles_table values
- * -) Statistics values magsAcc and magAVG added
+ * -) Statistics values magSum and magAVG added
  * -) Renamed doStatistics() to updateStatistics()
  * -) Added finalizeStatistics() for AVG calculation etc.
  * -) Added parameters to publish_compact()
  * 
  * Version v0.3 (18.07.2017)
  * -) Changed "magAVG" from uint16_t to float
- * -) Removed "magsAcc" from publishing since it does not add additional information
+ * -) Removed "magSum" from publishing since it does not add additional information
  * -) Renamed readings to begin with their cathegory-type: "detectionsInGroup"->"GroupDetections", "peakInGroup"->"GroupMagPeak", "magAVGinGroup"->"GroupMagAVG"
+ * -) Hamming window option removed
  * 
- * Version v0.4 (18.07.2017)
- * -) Bugfix
+ * Version v0.4 (19.07.2017)
+ * -) maskCycle table values now represent 1m avg FOV
+ * -) FOV_m parameter added to set the average FOV size
+ * -) Bin-groups can now be defined with individual first- und last-bin boundary and thus also overlap
+ * -) Statistics functions reworked
  * 
 \***************************************************************************/
 
@@ -68,7 +72,8 @@
 #define START_DELAY_s                     5                                // Delay before application starts for "emergency"-OTA in case of blocking application code
 
 #define PUBLISHING_INTERVAL_s             60
-#define DETECTION_THRESHOLD               90                               // Detection threshold highly depends on gain and sensor->drop distance
+#define DETECTION_THRESHOLD               40
+#define FOV_m                             0.5                              // Average FOV size in meter
 
 #define ADC_PIN_NR                        34
 #define DEBUG_GPIO_ISR                    5
@@ -78,6 +83,7 @@
 #define NR_OF_SAMPLES                     (1 << NR_OF_SAMPLES_bit)
 #define NR_OF_BINS                        (NR_OF_SAMPLES >> 1)
 
+#define NR_OF_BIN_GROUPS                  32
 
 // Wifi settings
 const char* ssid = "yourSSID";
@@ -110,48 +116,44 @@ uint32_t totalDetectionsCtr;
 uint16_t processSampleNr_tmp;
 int32_t ADCoffset;
 
-const uint8_t binGroupBoundary[] = {
-  7,  15,  23,  31,  39,  47,  55,  63,
-  71,  79,  87,  95, 103, 111, 119, 127,
-  135, 143, 151, 159, 167, 175, 183, 191,
-  199, 207, 215, 223, 231, 239, 247, 255
-};
-const uint8_t NR_OF_BIN_GROUPS = sizeof(binGroupBoundary) / sizeof(binGroupBoundary[0]);
+struct BIN_GROUP_BOUNDARIES {
+  uint8_t firstBin[NR_OF_BIN_GROUPS] = {
+    1, 8, 16, 24, 32, 40, 48, 56,
+    64, 72, 80, 88, 96, 104, 112, 120,
+    128, 136, 144, 152, 160, 168, 176, 184,
+    192, 200, 208, 216, 224, 232, 240, 248
+  };
+  uint8_t lastBin[NR_OF_BIN_GROUPS] = {
+    7,  15,  23,  31,  39,  47,  55,  63,
+    71,  79,  87,  95, 103, 111, 119, 127,
+    135, 143, 151, 159, 167, 175, 183, 191,
+    199, 207, 215, 223, 231, 239, 247, 255
+  };
+} binGroupBoundaries;
 
 struct FFT_BIN {
-  uint16_t magPeak;                             // holds the peak-magnitude
-  uint32_t detectionCtr;                        // counts when bin exceets detection threshold
+  uint32_t magSum;
+  float magAVG;
+  uint16_t magPeak;
+  uint32_t detections;
 } bin[NR_OF_BINS];
 
-struct BINGROUP {
-  uint16_t magPeak;                             // holds the magnitude value of the peak-bin
-  uint32_t binDetectionCtr;                     // counts EVERY bin inside the group that exceets the detection threshold
-  uint32_t magsAcc;                             // accumulated magnitudes
-  float magAVG;                                 // magnitude average (needs finilizeStatistics() call to be calculated
+struct FFT_BIN_GROUP {
+  uint32_t magSum;
+  float magAVG;
+  uint16_t magPeak;
+  uint32_t detections;
 } binGroup[NR_OF_BIN_GROUPS];
 
-
 // *****************************************
 // *****************************************
 // *****************************************
-//
-// For testing, ADC-samples can be overwritten by simulated waves
-// The total amplitude must be withing a 10-bit range (-512...+511)
-// Notice, that raindrops occupy only a fraction of the sample-time depending on their speed.
-//
-//#define SIMULATE
-//
 void IRAM_ATTR onTimer()
 {
   int16_t data;
   static uint16_t sampleNr;
 
-#ifdef SIMULATE
-    data = 2048;
-    data += 2047 * sin((2 * 3.1415 * i * 20) / NR_OF_SAMPLES);
-#else
-    data = analogRead(ADC_PIN_NR);
-#endif
+  data = analogRead(ADC_PIN_NR);
 
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 
