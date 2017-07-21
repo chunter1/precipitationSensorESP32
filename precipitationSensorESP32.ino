@@ -64,15 +64,26 @@
  * 
 \***************************************************************************/
 
+#define PROGNAME                         "precipitationSensor"
+#define PROGVERS                         "0.5"
+
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include "StateManager.h"
+#include "Settings.h"
+#include "WebFrontend.h"
+#include "AccessPoint.h"
+
+#define DEFAULT_SSID                     "SSID"
+#define DEFAULT_PASSWORD                 "PASSWORD"
+#define DEFAULT_FHEM_IP                  "192.168.1.100"
+#define DEFAULT_FHEM_PORT                8083
+#define DEFAULT_PUBLISH_INTERVAL         60
+#define DEFAULT_DETECTION_TRESHOLD       90
 
 #define START_DELAY_s                     5                                // Delay before application starts for "emergency"-OTA in case of blocking application code
-
-#define PUBLISHING_INTERVAL_s             60
-#define DETECTION_THRESHOLD               40
 #define FOV_m                             0.5                              // Average FOV size in meter
 
 #define ADC_PIN_NR                        34
@@ -85,15 +96,16 @@
 
 #define NR_OF_BIN_GROUPS                  32
 
-// Wifi settings
-const char* ssid = "yourSSID";
-const char* password = "yourPASSWORD";
+hw_timer_t * timer = NULL;
+StateManager stateManager;
+Settings settings;
+WebFrontend frontend(80, &settings);
+AccessPoint accessPoint(IPAddress(192, 168, 222, 1), IPAddress(192, 168, 222, 1), IPAddress(255, 255, 225, 0), "precipitationSensor");
 
 // FHEM server settings
-IPAddress serverIP(192, 168, 1, 100);
-const uint16_t serverPORT = 8083;
+IPAddress serverIP;
+uint16_t serverPORT = 0;
 
-hw_timer_t * timer = NULL;
 volatile SemaphoreHandle_t timerSemaphore;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -101,6 +113,8 @@ portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 volatile int16_t sampleRB[RINGBUFFER_SIZE];
 volatile uint16_t processSampleNr;
+uint publishInterval;
+uint detectionTreshold;    // Detection threshold highly depends on gain and sensor->drop distance
 
 uint32_t snapshotCtr;
 uint8_t snapProcessed_flag;
@@ -145,6 +159,111 @@ struct FFT_BIN_GROUP {
   uint32_t detections;
 } binGroup[NR_OF_BIN_GROUPS];
 
+IPAddress IPAddressFromString(String ipString) {
+  byte o1p = ipString.indexOf(".", 0);
+  byte o2p = ipString.indexOf(".", o1p + 1);
+  byte o3p = ipString.indexOf(".", o2p + 1);
+  byte o4p = ipString.indexOf(".", o3p + 1);
+
+  return IPAddress(strtol(ipString.substring(0, o1p).c_str(), NULL, 10),
+    strtol(ipString.substring(o1p + 1, o2p).c_str(), NULL, 10),
+    strtol(ipString.substring(o2p + 1, o3p).c_str(), NULL, 10),
+    strtol(ipString.substring(o3p + 1, o4p).c_str(), NULL, 10));
+}
+
+void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String staticIP, String staticMask, String staticGW, String hostName) {
+  if (ctSSID.length() > 0 && ctSSID != "---") {
+    unsigned long startMillis = millis();
+
+    WiFi.begin(ctSSID.c_str(), ctPass.c_str());
+    if (staticIP.length() > 7 && staticMask.length() > 7) {
+      if (staticGW.length() < 7) {
+        WiFi.config(IPAddressFromString(staticIP), IPAddressFromString(staticGW), (uint32_t)0);
+      }
+      else {
+        WiFi.config(IPAddressFromString(staticIP), IPAddressFromString(staticGW), IPAddressFromString(staticMask));
+      }
+    }
+
+    WiFi.setHostname(hostName.c_str());
+
+    Serial.println("Connect " + String(timeout) + " seconds to an AP (SSID " + String(nbr) + ")");
+    digitalWrite(DEBUG_GPIO_ISR, HIGH);
+    byte retryCounter = 0;
+    while (retryCounter < timeout * 2 && WiFi.status() != WL_CONNECTED) {
+      retryCounter++;
+      delay(500);
+      Serial.print(".");
+      digitalWrite(DEBUG_GPIO_ISR, retryCounter % 2 == 0);
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      stateManager.SetWiFiConnectTime((millis() - startMillis) / 1000.0);
+    }
+
+    digitalWrite(DEBUG_GPIO_ISR, LOW);
+  }
+
+}
+
+static bool StartWifi(Settings *settings) {
+  bool result = false;
+
+  Serial.println("Start WIFI_STA");
+
+  String hostName = settings->Get("HostName", "precipitationSensor");
+  Serial.print("HostName is: ");
+  Serial.println(hostName);
+  stateManager.SetHostname(hostName);
+
+  String staticIP = settings->Get("StaticIP", "");
+  String staticMask = settings->Get("StaticMask", "");
+  String staticGW = settings->Get("StaticGW", "");
+
+  if (staticIP.length() < 7 || staticMask.length() < 7) {
+    Serial.println("Using DHCP");
+  }
+  else {
+    Serial.println("Using static IP");
+    Serial.print("IP: ");
+    Serial.println(staticIP);
+    Serial.print("Mask: ");
+    Serial.println(staticMask);
+    Serial.print("Gateway: ");
+    Serial.println(staticGW);
+  }
+
+  TryConnectWIFI(settings->Get("ctSSID1", DEFAULT_SSID), settings->Get("ctPASS1", DEFAULT_PASSWORD), 1, settings->GetInt("ctTO1", 15), staticIP, staticMask, staticGW, hostName);
+  String ctSSID2 = settings->Get("ctSSID2", "---");
+  if (WiFi.status() != WL_CONNECTED && ctSSID2.length() > 0 && ctSSID2 != "---") {
+    TryConnectWIFI(ctSSID2, settings->Get("ctPASS2", "---"), 2, settings->GetInt("ctTO2", settings->GetInt("ctTO2", 15)), staticIP, staticMask, staticGW, hostName);
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    result = true;
+    Serial.println();
+    Serial.println("connected :-)");
+    Serial.print("SSID: ");
+    Serial.println(WiFi.SSID());
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP().toString());
+  }
+  else {
+    Serial.println();
+    Serial.println("We got no connection :-(");
+    // Open access point for 15 minutes
+    accessPoint.Begin(900);
+  }
+
+  Serial.println("Starting frontend");
+  frontend.SetPassword(settings->Get("FrontPass1", ""));
+  frontend.Begin(&stateManager);
+
+  return result;
+}
+
+
+
 // *****************************************
 // *****************************************
 // *****************************************
@@ -171,25 +290,6 @@ void IRAM_ATTR onTimer()
   //digitalWrite(DEBUG_GPIO_ISR, LOW);
 }
 
-// **************************************************
-// **************************************************
-// **************************************************
-void WiFiStart()
-{
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.print(".");
-    delay(500);
-  }
-
-  Serial.println("\nWiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
 // *****************************************
 // *****************************************
 // *****************************************
@@ -198,6 +298,25 @@ void setup()
   uint32_t startProcessTS;
   
   Serial.begin(115200);
+  delay(10);
+  Serial.println();
+
+  // Get the settings 
+  settings.Read();
+
+  // Get the FHEM connection from the settings
+  serverIP = IPAddressFromString(settings.Get("fhemIP", DEFAULT_FHEM_IP));
+  serverPORT = settings.GetUInt("fhemPort", DEFAULT_FHEM_PORT);
+  Serial.println("FHEM IP=" + serverIP.toString());
+  Serial.println("FHEM Port=" + String(serverPORT));
+
+  // Get the measurement settings
+  publishInterval = settings.GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
+  detectionTreshold = settings.GetUInt("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
+
+  stateManager.Begin(PROGVERS, PROGNAME);
+
+  StartWifi(&settings);
 
   pinMode(DEBUG_GPIO_ISR, OUTPUT);
   pinMode(DEBUG_GPIO_MAIN, OUTPUT);
@@ -209,11 +328,6 @@ void setup()
   analogSetClockDiv(1);
   adcAttachPin(ADC_PIN_NR);
 
-  Serial.print("\nConnecting to ");
-  Serial.println(ssid);
-
-  WiFiStart();
-
   ArduinoOTA.setHostname("precipitationSensorESP32");
   ArduinoOTA.onStart([]() { timerAlarmDisable(timer);});
   ArduinoOTA.onEnd([]() {});
@@ -224,6 +338,7 @@ void setup()
   timerSemaphore = xSemaphoreCreateBinary();
 
   timer = timerBegin(0, 868, true);
+  settings.SetTimer(timer);
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 9, true);
 
@@ -242,6 +357,8 @@ void setup()
       portEXIT_CRITICAL(&timerMux);
     }
   } while(processSampleNr_tmp < NR_OF_SAMPLES);
+
+  Serial.println("Setup done");
 }
 
 // *****************************************
@@ -249,7 +366,11 @@ void setup()
 // *****************************************
 void loop()
 {
+  stateManager.SetLoopStart();
+
   ArduinoOTA.handle();
+  frontend.Handle();
+  accessPoint.Handle();
 
   // new snapshot ready?
   if (xSemaphoreTake(timerSemaphore, 0) == pdTRUE)
@@ -267,12 +388,9 @@ void loop()
       processSamples(processSampleNr_tmp);
       updateStatistics();
     
-      if (snapshotCtr >= (40 * PUBLISHING_INTERVAL_s))                  // 1/0,025 ms = 40 snapshots/s
+      if (snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s
       {
         finalizeStatistics();
-        
-        if (WiFi.status() != WL_CONNECTED)
-          WiFiStart();
 
         //consoleOut_samples(0, 32);
         //consoleOut_bins(0, 40);
@@ -290,4 +408,6 @@ void loop()
       //digitalWrite(DEBUG_GPIO_MAIN, LOW);
     }
   }
+
+  stateManager.SetLoopEnd();
 }

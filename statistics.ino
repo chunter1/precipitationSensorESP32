@@ -81,7 +81,7 @@ void updateStatistics()
     {
       binMaskCycles[binNr]--;
     } else {
-      if (mag[binNr] > DETECTION_THRESHOLD)
+      if (mag[binNr] > detectionTreshold)
       {
         bin[binNr].detections++;
         totalDetectionsCtr++;
