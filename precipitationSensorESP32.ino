@@ -62,10 +62,21 @@
  * -) Bin-groups can now be defined with individual first- und last-bin boundary and thus also overlap
  * -) Statistics functions reworked
  * 
+ * Version v0.5 
+ * -) Web-frontend added by HCS, thanks!
+ * 
+ * Version v0.6 (23.07.2017)
+ * -) Increased sample-ringbuffer size from 1024 to 2048 samples
+ * -) TODO: check variable usage in ISR&loop - really atomic?
+ * -) Added buffer overflow check and handling
+ * -) Added ringbuffer overflow counter to publishCompact()
+ * -) Added "magAVG" and "magPeak" that hold the average and peak value calculated from all FFT-bins
+ * -) Modification in satatistics structure
+ * 
 \***************************************************************************/
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.5"
+#define PROGVERS                         "0.6"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -76,12 +87,12 @@
 #include "WebFrontend.h"
 #include "AccessPoint.h"
 
-#define DEFAULT_SSID                     "SSID"
-#define DEFAULT_PASSWORD                 "PASSWORD"
-#define DEFAULT_FHEM_IP                  "192.168.1.100"
-#define DEFAULT_FHEM_PORT                8083
-#define DEFAULT_PUBLISH_INTERVAL         60
-#define DEFAULT_DETECTION_TRESHOLD       90
+#define DEFAULT_SSID                      "SSID"
+#define DEFAULT_PASSWORD                  "PASSWORD"
+#define DEFAULT_FHEM_IP                   "192.168.1.100"
+#define DEFAULT_FHEM_PORT                 8083
+#define DEFAULT_PUBLISH_INTERVAL          60
+#define DEFAULT_DETECTION_TRESHOLD        30
 
 #define START_DELAY_s                     5                                // Delay before application starts for "emergency"-OTA in case of blocking application code
 #define FOV_m                             0.5                              // Average FOV size in meter
@@ -90,10 +101,11 @@
 #define DEBUG_GPIO_ISR                    5
 #define DEBUG_GPIO_MAIN                   23
 
-#define NR_OF_SAMPLES_bit                 9                                 // DO NOT MODIFY - Number of samples in [bits] e.g. 9 bits = 512 samples
-#define NR_OF_SAMPLES                     (1 << NR_OF_SAMPLES_bit)
-#define NR_OF_BINS                        (NR_OF_SAMPLES >> 1)
+#define RINGBUFFER_SIZE                   (NR_OF_FFT_SAMPLES << 2)
 
+#define NR_OF_FFT_SAMPLES_bit             9                                 // DO NOT MODIFY - Number of samples in [bits] e.g. 9 bits = 512 samples
+#define NR_OF_FFT_SAMPLES                 (1 << NR_OF_FFT_SAMPLES_bit)
+#define NR_OF_BINS                        (NR_OF_FFT_SAMPLES >> 1)
 #define NR_OF_BIN_GROUPS                  32
 
 hw_timer_t * timer = NULL;
@@ -106,29 +118,30 @@ AccessPoint accessPoint(IPAddress(192, 168, 222, 1), IPAddress(192, 168, 222, 1)
 IPAddress serverIP;
 uint16_t serverPORT = 0;
 
-volatile SemaphoreHandle_t timerSemaphore;
-portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-
-#define RINGBUFFER_SIZE     (NR_OF_SAMPLES * 2)
-
+volatile uint32_t samplePtrIn;
+volatile uint32_t samplePtrOut;
 volatile int16_t sampleRB[RINGBUFFER_SIZE];
-volatile uint16_t processSampleNr;
+volatile uint32_t RBoverflow;
+
 uint publishInterval;
 uint detectionTreshold;    // Detection threshold highly depends on gain and sensor->drop distance
 
 uint32_t snapshotCtr;
 uint8_t snapProcessed_flag;
 uint8_t clippingCtr;
+uint32_t RBoverflowCtr;
 uint16_t ADCpeakSample;
 
-int16_t re[NR_OF_SAMPLES];
-int16_t im[NR_OF_SAMPLES];
+int16_t re[NR_OF_FFT_SAMPLES];
+int16_t im[NR_OF_FFT_SAMPLES];
 
 // =========== statistics variables
 
 uint32_t totalDetectionsCtr;
-uint16_t processSampleNr_tmp;
 int32_t ADCoffset;
+
+float magAVG;
+uint16_t magPeak;
 
 struct BIN_GROUP_BOUNDARIES {
   uint8_t firstBin[NR_OF_BIN_GROUPS] = {
@@ -262,32 +275,25 @@ static bool StartWifi(Settings *settings) {
   return result;
 }
 
-
-
 // *****************************************
 // *****************************************
 // *****************************************
 void IRAM_ATTR onTimer()
 {
   int16_t data;
-  static uint16_t sampleNr;
+  uint32_t diff;
 
   data = analogRead(ADC_PIN_NR);
 
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 
-  sampleRB[sampleNr++] = data - 2048;
-  
-  if ((sampleNr == 256) || (sampleNr == 512) || (sampleNr == 768) || (sampleNr == 1024))
-  {
-    processSampleNr = sampleNr;
-    xSemaphoreGiveFromISR(timerSemaphore, NULL);
-  }
+  sampleRB[samplePtrIn] = data - 2048;
+  samplePtrIn = (++samplePtrIn) & (RINGBUFFER_SIZE - 1);
 
-  if (sampleNr >= RINGBUFFER_SIZE)
-    sampleNr = 0;
+  if (samplePtrIn == samplePtrOut)
+    RBoverflow = 1;
 
-  //digitalWrite(DEBUG_GPIO_ISR, LOW);
+  //digitalWrite(DEBUG_GPIO_ISR, LOW);  
 }
 
 // *****************************************
@@ -335,8 +341,6 @@ void setup()
   ArduinoOTA.onError([](ota_error_t error) {});
   ArduinoOTA.begin();
 
-  timerSemaphore = xSemaphoreCreateBinary();
-
   timer = timerBegin(0, 868, true);
   settings.SetTimer(timer);
   timerAttachInterrupt(timer, &onTimer, true);
@@ -347,18 +351,31 @@ void setup()
     ArduinoOTA.handle();
 
   timerAlarmEnable(timer);
-
-  // fill buffer
-  do {
-    if (xSemaphoreTake(timerSemaphore, 0) == pdTRUE)
-    {
-      portENTER_CRITICAL(&timerMux);
-      processSampleNr_tmp = processSampleNr;
-      portEXIT_CRITICAL(&timerMux);
-    }
-  } while(processSampleNr_tmp < NR_OF_SAMPLES);
+  while (samplePtrIn < NR_OF_FFT_SAMPLES);
 
   Serial.println("Setup done");
+}
+
+// *****************************************
+// *****************************************
+// *****************************************
+uint8_t snapshotAvailable()
+{
+  uint32_t samplePtrIn_tmp;
+  uint32_t diff;
+
+  samplePtrIn_tmp = samplePtrIn;
+
+  if (samplePtrIn_tmp > samplePtrOut)
+    diff = samplePtrIn_tmp - samplePtrOut;
+  else
+    diff = (samplePtrIn_tmp + RINGBUFFER_SIZE) - samplePtrOut;
+
+  // bufferPtrIn must be at least (NR_OF_FFT_SAMPLES / 2) ahead
+  if ((diff + 1) >= (NR_OF_FFT_SAMPLES >> 1))
+    return 1;
+
+  return 0;
 }
 
 // *****************************************
@@ -372,42 +389,45 @@ void loop()
   frontend.Handle();
   accessPoint.Handle();
 
-  // new snapshot ready?
-  if (xSemaphoreTake(timerSemaphore, 0) == pdTRUE)
+  while (snapshotAvailable())
   {
-    portENTER_CRITICAL(&timerMux);
-    processSampleNr_tmp = processSampleNr;
-    portEXIT_CRITICAL(&timerMux);
+    //digitalWrite(DEBUG_GPIO_MAIN, HIGH);
 
-    if (processSampleNr_tmp)
+    processSamples(samplePtrOut);
+
+    // check if no ringbuffer overflow occurred before or during sample processing
+    if (!RBoverflow)
     {
-      //digitalWrite(DEBUG_GPIO_MAIN, HIGH);
-    
-      snapshotCtr++;
-    
-      processSamples(processSampleNr_tmp);
       updateStatistics();
-    
-      if (snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s
+      snapshotCtr++;      
+
+      if (snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
       {
         finalizeStatistics();
-
-        //consoleOut_samples(0, 32);
-        //consoleOut_bins(0, 40);
-    
+  
+        //consoleOut_samples(0, 30);
+        //consoleOut_bins(240, 255);
+        
         publish_compact("PRECIPITATION_SENSOR");
         //publish_bins_count("PRECIPITATION_SENSOR_BINS_COUNT");
         //publish_bins_mag("PRECIPITATION_SENSOR_BINS_MAG");
         //publish_binGroups("PRECIPITATION_SENSOR_BIN_GROUPS");
-    
+      
         resetStatistics();
-    
+        
+        RBoverflowCtr = 0;
         snapshotCtr = 0;
       }
-        
-      //digitalWrite(DEBUG_GPIO_MAIN, LOW);
+    } else {
+      Serial.println("RINGBUFFER OVERFLOW!");
+      RBoverflowCtr++;
+      RBoverflow = 0;
     }
+
+    samplePtrOut = (samplePtrOut + (NR_OF_FFT_SAMPLES >> 1)) & (RINGBUFFER_SIZE - 1);
+
+    //digitalWrite(DEBUG_GPIO_MAIN, LOW);
   }
 
   stateManager.SetLoopEnd();
-}
+} 

@@ -59,8 +59,6 @@ void updateStatistics()
 {
   static uint8_t binMaskCycles[NR_OF_BINS];
   uint16_t mag[NR_OF_BINS];
-  uint16_t magPeak;
-
 
   // Bin-level statistics (exclude DC-bin)
   for (uint16_t binNr = 1; binNr < NR_OF_BINS; binNr++)
@@ -73,7 +71,7 @@ void updateStatistics()
 
     // sum (for AVG)
     bin[binNr].magSum += mag[binNr];
-
+    
     //binMaskCycles[binNr] = 0;                 // disable masking for testing
 
     // speed-dependent masking
@@ -103,12 +101,23 @@ void updateStatistics()
 void finalizeStatistics()
 {
   uint32_t magSumGroup;
+
+  magAVG = 0;
+  magPeak = 0;
   
   // bin-level statistic
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
     bin[binNr].magAVG = bin[binNr].magSum / snapshotCtr;
-  }
+    
+    if (binNr > 0)
+    {
+      magAVG += bin[binNr].magSum;
+      if (bin[binNr].magPeak > magPeak)
+        magPeak = bin[binNr].magPeak;
+    }
+  }  
+  magAVG = magAVG / snapshotCtr / (NR_OF_BINS - 1);
   
   // group-level statistics
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
@@ -155,8 +164,9 @@ void resetStatistics()
     binGroup[binGroupNr].detections = 0;
   }
 
+  magAVG = 0;
+  magPeak = 0;
   ADCpeakSample = 0;
   clippingCtr = 0;
   totalDetectionsCtr = 0;
 }
-

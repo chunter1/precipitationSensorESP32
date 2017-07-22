@@ -71,6 +71,24 @@ void header(char *dummyName)
 
   url += "setreading%20";
   url += String(dummyName);
+  url += "%20RBoverflow%20";
+  url += String(RBoverflowCtr);
+  url += "%3B";
+
+  url += "setreading%20";
+  url += String(dummyName);
+  url += "%20MagPeak%20";
+  url += String(magPeak);
+  url += "%3B";
+
+  url += "setreading%20";
+  url += String(dummyName);
+  url += "%20MagAVG%20";
+  url += String(magAVG);
+  url += "%3B";
+
+  url += "setreading%20";
+  url += String(dummyName);
   url += "%20state%20";
   url += String(totalDetectionsCtr);
   url += "%3B";

@@ -16,30 +16,30 @@
  * 
 \***************************************************************************/
 
-void processSamples(uint16_t lastSampleIdx)
+void processSamples(uint16_t firstSampleIdx)
 {
   int16_t sample;
   uint16_t sampleABS;
-  uint16_t firstSampleIdx;
+  uint16_t lastSampleIdx;
   uint16_t RBidx;
   int32_t sampleSUM;
 
   // Do not modify the sampleRB content!
   
-  firstSampleIdx = (lastSampleIdx - NR_OF_SAMPLES) & (RINGBUFFER_SIZE - 1);
+  lastSampleIdx = (firstSampleIdx + NR_OF_FFT_SAMPLES) & (RINGBUFFER_SIZE - 1);
 
   // calculate ADC offset
   sampleSUM = 0;
-  for (uint16_t i = 0; i < NR_OF_SAMPLES; i++)
+  for (uint16_t i = 0; i < NR_OF_FFT_SAMPLES; i++)
   {
     RBidx = (firstSampleIdx + i) & (RINGBUFFER_SIZE - 1);
     sampleSUM += sampleRB[RBidx];
   }
-  ADCoffset = sampleSUM >> NR_OF_SAMPLES_bit;
+  ADCoffset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
 
 
   // process each sample
-  for (uint16_t i = 0; i < NR_OF_SAMPLES; i++)
+  for (uint16_t i = 0; i < NR_OF_FFT_SAMPLES; i++)
   {
     RBidx = (firstSampleIdx + i) & (RINGBUFFER_SIZE - 1);
     sample = sampleRB[RBidx];
@@ -57,8 +57,8 @@ void processSamples(uint16_t lastSampleIdx)
     im[i] = 0;
   }
 
-  hannWindow(re, NR_OF_SAMPLES_bit);
+  hannWindow(re, NR_OF_FFT_SAMPLES_bit);
 
-  FFT(re, im, NR_OF_SAMPLES_bit);
+  FFT(re, im, NR_OF_FFT_SAMPLES_bit);
 }
 
