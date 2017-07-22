@@ -71,7 +71,7 @@ void header(char *dummyName)
 
   url += "setreading%20";
   url += String(dummyName);
-  url += "%20RBoverflow%20";
+  url += "%20RBoverflows%20";
   url += String(RBoverflowCtr);
   url += "%3B";
 
