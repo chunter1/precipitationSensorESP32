@@ -71,6 +71,27 @@ bool WebFrontend::IsAuthentified() {
   return result;
 }
 
+String WebFrontend::GetBinGroupRow(byte nbr) {
+  String result = "";
+  String bgfKey = "BG" + String(nbr) + "F";
+  String bgtKey = "BG" + String(nbr) + "T";
+  byte groupSize = m_settings->BaseData.NrOfBins / m_settings->BaseData.NrOfBinGroups;
+
+  result += "<tr><td><label>Bin group ";
+  result += String(nbr +1);
+  
+  result += ":</label></td><td><label>From:&nbsp;</label><input name='" + bgfKey + "' size='8' maxlength='3' Value='";
+  result += m_settings->Get(bgfKey, String(nbr * groupSize));
+  
+  result += "'></input>&nbsp;&nbsp;&nbsp;<label>To:&nbsp;</label><input name='" + bgtKey + "' size='8' maxlength='3' Value='";
+  result += m_settings->Get(bgtKey, String(nbr * groupSize + groupSize -1));
+
+  result += F("'></input></td></tr>");
+
+  return result;
+}
+
+
 void WebFrontend::Begin(StateManager *stateManager) {
   m_stateManager = stateManager;
 
@@ -236,7 +257,9 @@ void WebFrontend::Begin(StateManager *stateManager) {
 
       // HostName, startup-delay
       data += F("<tr><td><label>Hostname: </label></td><td><input name='HostName' size='27' maxlength='63' Value='");
-      data += m_settings->Get("HostName", "precipitationSensor");
+      data += m_settings->Get("HostName", "LaCrosseGateway");
+      data += F("'><label>&nbsp;&nbsp;Startup-delay (s): </label><input name='StartupDelay' size='3' maxlength='2' Value='");
+      data += m_settings->Get("StartupDelay", "5");
       data += F("'> </td></tr>");
 
       // FHEM connection
@@ -252,12 +275,15 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='10' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
       data += F("'><label>&nbsp;&nbsp;Detection threshold: </label><input name='DetectionThreshold' size='10' maxlength='5' Value='");
-      data += m_settings->Get("DetectionThreshold", "90");
-      data += F("'><label>&nbsp;&nbsp;First bin: </label><input name='FirstBin' size='10' maxlength='5' Value='");
-      data += m_settings->Get("FirstBin", "???");
-      data += F("'><label>&nbsp;&nbsp;Last bin: </label><input name='LastBin' size='10' maxlength='5' Value='");
-      data += m_settings->Get("LastBin", "???");
+      data += m_settings->Get("DetectionThreshold", "30");
       data += F("'></td></tr>");
+
+      // Bin group boundaries
+      data += F("<tr><td></td><td><br>Bin group boundaries</td></tr>");
+      for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
+        data += GetBinGroupRow(i);
+      }
+
 
 
       // Save button

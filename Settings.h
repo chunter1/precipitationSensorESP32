@@ -5,7 +5,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 1024
 
 class Settings {
 public:
@@ -13,6 +13,11 @@ public:
     int from;
     int to;
   };
+
+  struct BaseDataStruct {
+    uint NrOfBins;
+    byte NrOfBinGroups;
+  } BaseData;
 
   Settings();
  

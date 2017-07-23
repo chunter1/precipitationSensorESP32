@@ -34,6 +34,7 @@ private:
   String GetDisplayName();
   String BuildHardwareRow(String text1, String text2, String text3);
   Settings *m_settings;
+  String GetBinGroupRow(byte nbr);
 };
 
 #endif

@@ -93,8 +93,7 @@
 #define DEFAULT_FHEM_PORT                 8083
 #define DEFAULT_PUBLISH_INTERVAL          60
 #define DEFAULT_DETECTION_TRESHOLD        30
-
-#define START_DELAY_s                     5                                // Delay before application starts for "emergency"-OTA in case of blocking application code
+                         
 #define FOV_m                             0.5                              // Average FOV size in meter
 
 #define ADC_PIN_NR                        34
@@ -307,7 +306,9 @@ void setup()
   delay(10);
   Serial.println();
 
-  // Get the settings 
+  // Get the settings
+  settings.BaseData.NrOfBins = NR_OF_BINS;
+  settings.BaseData.NrOfBinGroups = NR_OF_BIN_GROUPS;
   settings.Read();
 
   // Get the FHEM connection from the settings
@@ -319,6 +320,16 @@ void setup()
   // Get the measurement settings
   publishInterval = settings.GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
   detectionTreshold = settings.GetUInt("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
+
+  // Get the groups from the settings
+  for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
+    byte groupSize = settings.BaseData.NrOfBins / settings.BaseData.NrOfBinGroups;
+    binGroupBoundaries.firstBin[nbr] = settings.GetUInt("BG" + String(nbr) + "F", nbr * groupSize);
+    binGroupBoundaries.lastBin[nbr]  = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
+
+    Serial.println(String(binGroupBoundaries.firstBin[nbr]) + " / " + String(binGroupBoundaries.lastBin[nbr]));
+
+  }
 
   stateManager.Begin(PROGVERS, PROGNAME);
 
@@ -346,9 +357,10 @@ void setup()
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 9, true);
 
-  startProcessTS = millis() + (START_DELAY_s * 1000);
-  while (millis() < startProcessTS)
+  startProcessTS = millis() + (settings.GetUInt("StartupDelay", 5) * 1000);
+  while (millis() < startProcessTS) {
     ArduinoOTA.handle();
+  }
 
   timerAlarmEnable(timer);
   while (samplePtrIn < NR_OF_FFT_SAMPLES);
