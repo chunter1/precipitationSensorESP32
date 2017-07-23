@@ -326,9 +326,6 @@ void setup()
     byte groupSize = settings.BaseData.NrOfBins / settings.BaseData.NrOfBinGroups;
     binGroupBoundaries.firstBin[nbr] = settings.GetUInt("BG" + String(nbr) + "F", nbr * groupSize);
     binGroupBoundaries.lastBin[nbr]  = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
-
-    Serial.println(String(binGroupBoundaries.firstBin[nbr]) + " / " + String(binGroupBoundaries.lastBin[nbr]));
-
   }
 
   stateManager.Begin(PROGVERS, PROGNAME);
