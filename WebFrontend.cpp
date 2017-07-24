@@ -1,6 +1,7 @@
 #include "WebFrontend.h"
 #include "Settings.h"
 #include "StateManager.h"
+#include "Help.h"
 
 WebFrontend::WebFrontend(int port, Settings *settings) : m_webserver(port) {
   m_port = port;
@@ -81,7 +82,7 @@ String WebFrontend::GetBinGroupRow(byte nbr) {
   result += String(nbr +1);
   
   result += ":</label></td><td><label>From:&nbsp;</label><input name='" + bgfKey + "' size='8' maxlength='3' Value='";
-  result += m_settings->Get(bgfKey, String(nbr * groupSize));
+  result += m_settings->Get(bgfKey, String(nbr == 0 ? 1 : (nbr * groupSize)));
   
   result += "'></input>&nbsp;&nbsp;&nbsp;<label>To:&nbsp;</label><input name='" + bgtKey + "' size='8' maxlength='3' Value='";
   result += m_settings->Get(bgtKey, String(nbr * groupSize + groupSize -1));
@@ -122,6 +123,34 @@ void WebFrontend::Begin(StateManager *stateManager) {
     String result;
     result += m_stateManager->GetXML();
     m_webserver.send(200, "text/xml", result);
+  });
+
+  m_webserver.on("/help", [this]() {
+    if (IsAuthentified()) {
+      String result;
+      result += GetTop();
+      result += GetNavigation();
+      result += FPSTR(help);
+
+      result += "<h3>Bin speeds</h3>";
+      result += "<style>table{border-collapse: collapse; width: 100 % ;}td, th{border: 1px solid #dddddd;text - align: left;padding: 8px;}</style>";
+      result += "<Table>";
+      for (float i = 1; i < m_settings->BaseData.NrOfBins; i++) {
+        float freq = i * 20.0;
+        float mps = ((freq * (0.3 / 24.15)) / 2.0) * sqrtf(2.0);
+
+        result += "<tr>";
+        result += "<td> Bin " + String(i, 0);
+        result += "<td>" + String(freq, 0) + " Hz</td>";
+        result += "<td>" + String(mps, 2) + " m/s</td>";
+        result += "<td>" + String(mps * 3.6, 1) + " km/h</td>";
+        result += "</tr>";
+      }
+      result += "</Table>";
+
+      result += GetBottom();
+      m_webserver.send(200, "text/html", result);
+    }
   });
 
   m_webserver.on("/hardware", [this]() {
@@ -187,9 +216,37 @@ void WebFrontend::Begin(StateManager *stateManager) {
             m_webserver.send(200, "text/html", content);
             break;
           }
-
         }
       }
+
+      // Check the bin numbers if they are valid
+      for (byte nbr = 0; nbr < m_settings->BaseData.NrOfBinGroups; nbr++) {
+        String bgF = m_webserver.arg("BG" + String(nbr) + "F");
+        String bgT = m_webserver.arg("BG" + String(nbr) + "T");
+        long bgFI = bgF.toInt();
+        long bgTI = bgT.toInt();
+
+        String all = bgF + bgT;
+        bool noDigit = false;
+        for (byte c = 0; c < all.length(); c++) {
+          if(!isDigit(all[c])) {
+            noDigit = true;
+            break;
+          }
+        }
+        if (noDigit || bgF.length() == 0 || bgT.length() == 0 || bgFI < 1 || bgFI > 255 || bgTI < 1 || bgTI > 255) {
+          saveIt = false;
+          String content = GetTop();
+          content += F("<div align=center>");
+          content += F("<br><br><h2><font color='red'>");
+          content += F("Bin numbers must be in the range 1 ... 255</font></h2>");
+          content += F("</div>");
+          content += GetBottom();
+          m_webserver.send(200, "text/html", content);
+          break;
+        }
+      }
+
       
       if (saveIt) {
         String info = m_settings->Write();
@@ -278,6 +335,26 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += m_settings->Get("DetectionThreshold", "30");
       data += F("'></td></tr>");
 
+      // Flags
+      data += F("<tr><td><label>Publish: </label></td><td>");
+      data += F("<input name='PubCompact' type='checkbox' value='true' "); 
+      data += m_settings->Get("PubCompact", "true") == "true" ? "checked" : ""; 
+      data += F(">Compact&nbsp;&nbsp;&nbsp;");
+
+      data += F("<input name='PubBC' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBC", "false") == "true" ? "checked" : "";
+      data += F(">Bins count&nbsp;&nbsp;&nbsp;");
+
+      data += F("<input name='PubBM' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBM", "false") == "true" ? "checked" : "";
+      data += F(">Bins mag&nbsp;&nbsp;&nbsp;");
+
+      data += F("<input name='PubBG' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBG", "false") == "true" ? "checked" : "";
+      data += F(">Bin groups&nbsp;&nbsp;&nbsp;");
+
+      data += F("</td></tr>");
+
       // Bin group boundaries
       data += F("<tr><td></td><td><br>Bin group boundaries</td></tr>");
       for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
@@ -337,6 +414,7 @@ String WebFrontend::GetNavigation() {
   result += F("<a href='/'>Home</a>&nbsp;&nbsp;");
   result += F("<a href='setup'>Setup</a>&nbsp;&nbsp;");
   result += F("<a href='hardware'>Hardware</a>&nbsp;&nbsp;");
+  result += F("<a href='help'>Help</a>&nbsp;&nbsp;");
   if (m_password.length() > 0) {
     result += F("<a href='login?DISCONNECT=YES'>Logout</a>&nbsp;&nbsp;");
   }

@@ -324,7 +324,7 @@ void setup()
   // Get the groups from the settings
   for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
     byte groupSize = settings.BaseData.NrOfBins / settings.BaseData.NrOfBinGroups;
-    binGroupBoundaries.firstBin[nbr] = settings.GetUInt("BG" + String(nbr) + "F", nbr * groupSize);
+    binGroupBoundaries.firstBin[nbr] = settings.GetUInt("BG" + String(nbr) + "F", nbr == 0 ? 1 : (nbr * groupSize));
     binGroupBoundaries.lastBin[nbr]  = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
   }
 
@@ -417,11 +417,19 @@ void loop()
         //consoleOut_samples(0, 30);
         //consoleOut_bins(240, 255);
         
-        publish_compact("PRECIPITATION_SENSOR");
-        //publish_bins_count("PRECIPITATION_SENSOR_BINS_COUNT");
-        //publish_bins_mag("PRECIPITATION_SENSOR_BINS_MAG");
-        //publish_binGroups("PRECIPITATION_SENSOR_BIN_GROUPS");
-      
+        if (settings.GetBool("PubCompact", true)) {
+          publish_compact("PRECIPITATION_SENSOR");
+        }
+        if (settings.GetBool("PubBC", false)) {
+          publish_bins_count("PRECIPITATION_SENSOR_BINS_COUNT");
+        }
+        if (settings.GetBool("PubBM", false)) {
+          publish_bins_mag("PRECIPITATION_SENSOR_BINS_MAG");
+        }
+        if (settings.GetBool("PubBG", false)) {
+          publish_binGroups("PRECIPITATION_SENSOR_BIN_GROUPS");
+        }
+
         resetStatistics();
         
         RBoverflowCtr = 0;
