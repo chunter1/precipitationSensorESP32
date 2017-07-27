@@ -116,6 +116,7 @@ AccessPoint accessPoint(IPAddress(192, 168, 222, 1), IPAddress(192, 168, 222, 1)
 // FHEM server settings
 IPAddress serverIP;
 uint16_t serverPORT = 0;
+String dummyPrefix;
 
 volatile uint32_t samplePtrIn;
 volatile uint32_t samplePtrOut;
@@ -124,6 +125,7 @@ volatile uint32_t RBoverflow;
 
 uint publishInterval;
 uint detectionTreshold;    // Detection threshold highly depends on gain and sensor->drop distance
+uint mountingAngle;
 
 uint32_t snapshotCtr;
 uint8_t snapProcessed_flag;
@@ -312,6 +314,7 @@ void setup()
   settings.Read();
 
   // Get the FHEM connection from the settings
+  dummyPrefix = settings.Get("DPR", "PRECIPITATION_SENSOR");
   serverIP = IPAddressFromString(settings.Get("fhemIP", DEFAULT_FHEM_IP));
   serverPORT = settings.GetUInt("fhemPort", DEFAULT_FHEM_PORT);
   Serial.println("FHEM IP=" + serverIP.toString());
@@ -320,6 +323,7 @@ void setup()
   // Get the measurement settings
   publishInterval = settings.GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
   detectionTreshold = settings.GetUInt("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
+  mountingAngle = settings.GetUInt("SMA", 45);
 
   // Get the groups from the settings
   for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
@@ -418,16 +422,19 @@ void loop()
         //consoleOut_bins(240, 255);
         
         if (settings.GetBool("PubCompact", true)) {
-          publish_compact("PRECIPITATION_SENSOR");
+          publish_compact((char*)dummyPrefix.c_str());
         }
         if (settings.GetBool("PubBC", false)) {
-          publish_bins_count("PRECIPITATION_SENSOR_BINS_COUNT");
+          String bc = dummyPrefix + String("_BINS_COUNT");
+          publish_bins_count((char*)bc.c_str());
         }
         if (settings.GetBool("PubBM", false)) {
-          publish_bins_mag("PRECIPITATION_SENSOR_BINS_MAG");
+          String bm = dummyPrefix + String("_BINS_MAG");
+          publish_bins_mag((char*)bm.c_str());
         }
         if (settings.GetBool("PubBG", false)) {
-          publish_binGroups("PRECIPITATION_SENSOR_BIN_GROUPS");
+          String bg = dummyPrefix + String("_BIN_GROUPS");
+          publish_bins_mag((char*)bg.c_str());
         }
 
         resetStatistics();

@@ -135,9 +135,10 @@ void WebFrontend::Begin(StateManager *stateManager) {
       result += "<h3>Bin speeds</h3>";
       result += "<style>table{border-collapse: collapse; width: 100 % ;}td, th{border: 1px solid #dddddd;text - align: left;padding: 8px;}</style>";
       result += "<Table>";
+      uint angle = m_settings->GetUInt("SMA", 45);
       for (float i = 1; i < m_settings->BaseData.NrOfBins; i++) {
         float freq = i * 20.0;
-        float mps = ((freq * (0.3 / 24.15)) / 2.0) * sqrtf(2.0);
+        float mps = ((freq * (0.3 / 24.15)) / 2.0) / cos((PI * angle) / 180);
 
         result += "<tr>";
         result += "<td> Bin " + String(i, 0);
@@ -321,15 +322,22 @@ void WebFrontend::Begin(StateManager *stateManager) {
 
       // FHEM connection
       data += F("<tr><td></td><td><br>Connection to FHEM</td></tr>");
-      data += F("<tr><td> <label>FHEM-Address: </label></td><td><input name='fhemIP' size='27' maxlength='15' Value='");
+      data += F("<tr><td><label>FHEM-Address: </label></td><td><input name='fhemIP' size='27' maxlength='15' Value='");
       data += m_settings->Get("fhemIP", "");
       data += F("'><label>&nbsp;&nbsp;Port: </label><input name='fhemPort' size='12' maxlength='5' Value='");
       data += m_settings->Get("fhemPort", "8083");
       data += F("'></td></tr>");
 
+      data += F("<tr><td><label>Dummy prefix:</label></td><td><input name='DPR' size='30' maxlength='25' Value='");
+      data += m_settings->Get("DPR", "PRECIPITATION_SENSOR");
+      data += F("'></td></tr>");
+
       // Measurement settings
       data += F("<tr><td></td><td><br>Measurement options</td></tr>");
-      data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='10' maxlength='4' Value='");
+      data += F("<tr><td> <label>Mounting angle: </label></td><td><input name='SMA' size='5' maxlength='3' Value='");
+      data += m_settings->Get("SMA", "45");
+      data += F("'><label>&nbsp;degree&nbsp;(0 is facing upward)</td></tr>");
+      data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
       data += F("'><label>&nbsp;&nbsp;Detection threshold: </label><input name='DetectionThreshold' size='10' maxlength='5' Value='");
       data += m_settings->Get("DetectionThreshold", "30");
