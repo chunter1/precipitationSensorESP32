@@ -73,10 +73,18 @@
  * -) Added "magAVG" and "magPeak" that hold the average and peak value calculated from all FFT-bins
  * -) Modification in satatistics structure
  * 
+ * Version v0.7 (29.07.2017)
+ * -) Added magAVGkorr and GroupMagAVGkorr that hold the FOV-time corrected magAVG values
+ * -) Added threshold to bin struct to set the threshold individually (TODO: calc threshold based on noise figure)
+ *    Should hopefully never be necessary when the planned low-noise preamp design is used
+ * -) magAVGkorr and GroupMagAVGkorr added to published data. All AVG-parameters are now formated to always have 4 decimals.
+ * -) Replaced previous detection algorithm with a new "mask-less" approach.
+ * -) ADCpeak is now limited to 0...100%.
+ * 
 \***************************************************************************/
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.6"
+#define PROGVERS                         "0.7"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -142,6 +150,7 @@ uint32_t totalDetectionsCtr;
 int32_t ADCoffset;
 
 float magAVG;
+float magAVGkorr;
 uint16_t magPeak;
 
 struct BIN_GROUP_BOUNDARIES {
@@ -160,6 +169,7 @@ struct BIN_GROUP_BOUNDARIES {
 } binGroupBoundaries;
 
 struct FFT_BIN {
+  uint32_t threshold;
   uint32_t magSum;
   float magAVG;
   uint16_t magPeak;
@@ -169,6 +179,7 @@ struct FFT_BIN {
 struct FFT_BIN_GROUP {
   uint32_t magSum;
   float magAVG;
+  float magAVGkorr;
   uint16_t magPeak;
   uint32_t detections;
 } binGroup[NR_OF_BIN_GROUPS];
@@ -363,6 +374,18 @@ void setup()
     ArduinoOTA.handle();
   }
 
+  // Set threshold for each bin individually
+  // TODO: Add formula that automatically adapts the threshold to the frequency dependent noise level
+  for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
+  {
+    if (binNr < 8)
+      bin[binNr].threshold = detectionTreshold * 3;     // quick & dirty test!
+    else if (binNr < 16)
+      bin[binNr].threshold = detectionTreshold * 2;     // quick & dirty test!
+    else
+      bin[binNr].threshold = detectionTreshold;
+  }
+  
   timerAlarmEnable(timer);
   while (samplePtrIn < NR_OF_FFT_SAMPLES);
 
@@ -419,7 +442,7 @@ void loop()
         finalizeStatistics();
   
         //consoleOut_samples(0, 30);
-        //consoleOut_bins(240, 255);
+        //consoleOut_bins(40, 60);
         
         if (settings.GetBool("PubCompact", true)) {
           publish_compact((char*)dummyPrefix.c_str());

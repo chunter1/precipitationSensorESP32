@@ -37,6 +37,8 @@ void header_short(char *dummyName)
 // **************************************************
 void header(char *dummyName)
 {
+  char str[20];
+  
   header_short(dummyName);
 
   url += "setreading%20";
@@ -54,6 +56,9 @@ void header(char *dummyName)
   url += "setreading%20";
   url += String(dummyName);
   url += "%20ADCpeak%20";
+  //url += String((100 * ADCpeakSample) / 2048);
+  if (ADCpeakSample > 2048)
+    ADCpeakSample = 2048;
   url += String((100 * ADCpeakSample) / 2048);
   url += "%3B";
 
@@ -83,8 +88,16 @@ void header(char *dummyName)
 
   url += "setreading%20";
   url += String(dummyName);
-  url += "%20MagAVG%20";
-  url += String(magAVG);
+  url += "%20MagAVG%20";  
+  sprintf(str, "%.4f", magAVG);
+  url += str;
+  url += "%3B";
+
+  url += "setreading%20";
+  url += String(dummyName);
+  url += "%20MagAVGkorr%20";  
+  sprintf(str, "%.4f", magAVGkorr);
+  url += str;
   url += "%3B";
 
   url += "setreading%20";
@@ -109,6 +122,8 @@ void footer()
 // **************************************************
 void publish_compact(char* dummyName)
 {
+  char str[20];
+  
   header(dummyName);
 
   url += "setreading%20";
@@ -148,10 +163,26 @@ void publish_compact(char* dummyName)
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
     url += "%20";
-    url += String(binGroup[binGroupNr].magAVG);
+    char str[20];
+    sprintf(str, "%.4f", binGroup[binGroupNr].magAVG);
+    url += str;
   }
   url += "%3B";
+
+
+  url += "setreading%20";
+  url += String(dummyName);
+  url += "%20";
   
+  url += "GroupMagAVGkorr";
+      
+  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
+  {
+    url += "%20";
+    sprintf(str, "%.4f", binGroup[binGroupNr].magAVGkorr);
+    url += str;
+  }
+  url += "%3B";
       
   footer();
 }
@@ -206,7 +237,7 @@ void publish_binGroups(char* dummyName)
       
       url += "%3B";
     }
-      
+   
     footer();
   }
 }
