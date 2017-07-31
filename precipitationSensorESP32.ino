@@ -81,10 +81,14 @@
  * -) Replaced previous detection algorithm with a new "mask-less" approach.
  * -) ADCpeak is now limited to 0...100%.
  * 
+ * Version v0.8 (31.07.2017)
+ * -) Added function startCapture() and stopCapture()
+ * -) Important calculation bugfix in snapshotAvailable()
+ * 
 \***************************************************************************/
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.7"
+#define PROGVERS                         "0.8"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -311,6 +315,25 @@ void IRAM_ATTR onTimer()
 // *****************************************
 // *****************************************
 // *****************************************
+void startCapture()
+{
+  samplePtrIn = 0;
+  samplePtrOut = 0;
+  timerAlarmEnable(timer);
+  while (samplePtrIn < NR_OF_FFT_SAMPLES) {}
+}
+
+// *****************************************
+// *****************************************
+// *****************************************
+void stopCapture()
+{
+  timerAlarmDisable(timer);
+}
+
+// *****************************************
+// *****************************************
+// *****************************************
 void setup()
 {
   uint32_t startProcessTS;
@@ -386,8 +409,7 @@ void setup()
       bin[binNr].threshold = detectionTreshold;
   }
   
-  timerAlarmEnable(timer);
-  while (samplePtrIn < NR_OF_FFT_SAMPLES);
+  startCapture();
 
   Serial.println("Setup done");
 }
@@ -407,8 +429,8 @@ uint8_t snapshotAvailable()
   else
     diff = (samplePtrIn_tmp + RINGBUFFER_SIZE) - samplePtrOut;
 
-  // bufferPtrIn must be at least (NR_OF_FFT_SAMPLES / 2) ahead
-  if ((diff + 1) >= (NR_OF_FFT_SAMPLES >> 1))
+  // bufferPtrIn must be at least NR_OF_FFT_SAMPLES ahead
+  if (diff >= NR_OF_FFT_SAMPLES)
     return 1;
 
   return 0;
@@ -430,20 +452,23 @@ void loop()
     //digitalWrite(DEBUG_GPIO_MAIN, HIGH);
 
     processSamples(samplePtrOut);
+    samplePtrOut = (samplePtrOut + (NR_OF_FFT_SAMPLES >> 1)) & (RINGBUFFER_SIZE - 1);
 
     // check if no ringbuffer overflow occurred before or during sample processing
     if (!RBoverflow)
     {
       updateStatistics();
-      snapshotCtr++;      
+      snapshotCtr++;
 
       if (snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
       {
+        //stopCapture();
+
         finalizeStatistics();
   
-        //consoleOut_samples(0, 30);
-        //consoleOut_bins(40, 60);
-        
+        //consoleOut_samples(0, 40);
+        //consoleOut_bins(120, 140);
+
         if (settings.GetBool("PubCompact", true)) {
           publish_compact((char*)dummyPrefix.c_str());
         }
@@ -464,6 +489,8 @@ void loop()
         
         RBoverflowCtr = 0;
         snapshotCtr = 0;
+        
+        //startCapture();
       }
     } else {
       Serial.println("RINGBUFFER OVERFLOW!");
@@ -471,9 +498,7 @@ void loop()
       RBoverflow = 0;
     }
 
-    samplePtrOut = (samplePtrOut + (NR_OF_FFT_SAMPLES >> 1)) & (RINGBUFFER_SIZE - 1);
-
-    //digitalWrite(DEBUG_GPIO_MAIN, LOW);
+    //digitalWrite(DEBUG_GPIO_MAIN, LOW);    
   }
 
   stateManager.SetLoopEnd();
