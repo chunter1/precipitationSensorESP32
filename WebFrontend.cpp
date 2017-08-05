@@ -2,6 +2,7 @@
 #include "Settings.h"
 #include "StateManager.h"
 #include "Help.h"
+#include "Tools.h"
 
 WebFrontend::WebFrontend(int port, Settings *settings) : m_webserver(port) {
   m_port = port;
@@ -118,7 +119,7 @@ void WebFrontend::Begin(StateManager *stateManager) {
       ESP.restart();
     }
   });
-
+  
   m_webserver.on("/state", [this]() {
     String result;
     result += m_stateManager->GetXML();
@@ -160,8 +161,10 @@ void WebFrontend::Begin(StateManager *stateManager) {
       result += GetTop();
       result += GetNavigation();
       result += "<br><table cellspacing='3'>"; 
-      result += BuildHardwareRow("ESP32&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", "present&nbsp;:-)", "SDK:&nbsp;" + String(ESP.getSdkVersion()) + "&nbsp;&nbsp;free heap:&nbsp;" + String(ESP.getFreeHeap()));
-      result += BuildHardwareRow("WiFi", String(WiFi.RSSI()) + "&nbsp;dBm", "Mode: " + WifiModeToString(WiFi.getMode()) + "&nbsp;&nbsp;&nbsp;Time to connect: " + String(m_stateManager->GetWiFiConnectTime(), 1) + " s");
+      result += BuildHardwareRow("ESP32:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", "present&nbsp;:-)", "SDK:&nbsp;" + String(ESP.getSdkVersion()) + "&nbsp;&nbsp;free heap:&nbsp;" + String(ESP.getFreeHeap()));
+      result += BuildHardwareRow("WiFi:", String(WiFi.RSSI()) + "&nbsp;dBm", "Mode: " + WifiModeToString(WiFi.getMode()) + "&nbsp;&nbsp;&nbsp;Time to connect: " + String(m_stateManager->GetWiFiConnectTime(), 1) + " s");
+      result += BuildHardwareRow("Chip ID:", Tools::GetChipId());
+      result += BuildHardwareRow("Chip Revision:", Tools::GetChipRevision());
       if (m_hardwareCallback != nullptr) {
         String rawData = m_hardwareCallback();
         result += "<tr><td>";
@@ -303,7 +306,7 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += F("'> (if empty, no login is required)</td></tr>");
 
       data += F("<tr><td></td><td><br>DHCP will be used, in case of one of the fields IP, mask or gateway remains empty</td></tr>");
-
+      
       // staticIP, staticMask, staticGW, 
       data += F("<tr> <td> <label>IP-Address: </label></td><td><input name='StaticIP' size='27' maxlength='15' Value='");
       data += m_settings->Get("StaticIP", "");
@@ -315,7 +318,7 @@ void WebFrontend::Begin(StateManager *stateManager) {
 
       // HostName, startup-delay
       data += F("<tr><td><label>Hostname: </label></td><td><input name='HostName' size='27' maxlength='63' Value='");
-      data += m_settings->Get("HostName", "LaCrosseGateway");
+      data += m_settings->Get("HostName", "PrecipitationSensor");
       data += F("'><label>&nbsp;&nbsp;Startup-delay (s): </label><input name='StartupDelay' size='3' maxlength='2' Value='");
       data += m_settings->Get("StartupDelay", "5");
       data += F("'> </td></tr>");

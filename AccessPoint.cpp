@@ -1,4 +1,5 @@
 #include "AccessPoint.h"
+#include "Tools.h"
 
 AccessPoint::AccessPoint(IPAddress ip, IPAddress gateway, IPAddress subnet, String ssidPrefix) {
   m_ip = ip;
@@ -10,17 +11,10 @@ AccessPoint::AccessPoint(IPAddress ip, IPAddress gateway, IPAddress subnet, Stri
 void AccessPoint::Begin(int autoClose) {
   Serial.println("Starting access point ...");
 
-  String r1((uint16_t)(ESP.getEfuseMac() >> 32), HEX);
-  String r2((uint32_t)(ESP.getEfuseMac()), HEX);
-  r1.toUpperCase();
-  r2.toUpperCase();
-  String chipID =  r1 + r2;
- 
-  WiFi.mode(WIFI_MODE_AP);
-  String ssid = m_ssidPrefix + "_" + chipID;
-  WiFi.softAP(ssid.c_str());
+  WiFi.mode(WIFI_STA);
+  String ssid = m_ssidPrefix + "-" + Tools::GetChipId();
   WiFi.softAPConfig(m_ip, m_ip, m_subnet);
-  
+  WiFi.softAP(ssid.c_str());
   Serial.println("running, SSID=" + ssid);
 
   m_autoClose = autoClose;

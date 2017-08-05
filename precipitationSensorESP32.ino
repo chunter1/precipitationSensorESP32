@@ -85,10 +85,18 @@
  * -) Added function startCapture() and stopCapture()
  * -) Important calculation bugfix in snapshotAvailable()
  * 
+ * Version v0.8.1 (05.08.2017)
+ * -) Added Tools class with helpers like GetChipId() ...
+ * -) Added ChipID and Revision to the hardware page and as serial output
+ * -) OTA MDS name is now precipitationSensor_<ChipID>
+ * -) Default hostname in the setup is now precipitationSensor - LaCrosseGateway was wrong :-)
+ * -) AccessPoint name is now ps-<ChipID>
+ * -) Added watchdog triggering on GPIO32
+ *
 \***************************************************************************/
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.8"
+#define PROGVERS                         "0.8.1"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -98,6 +106,9 @@
 #include "Settings.h"
 #include "WebFrontend.h"
 #include "AccessPoint.h"
+#include "Tools.h"
+#include "Watchdog.h"
+
 
 #define DEFAULT_SSID                      "SSID"
 #define DEFAULT_PASSWORD                  "PASSWORD"
@@ -123,7 +134,8 @@ hw_timer_t * timer = NULL;
 StateManager stateManager;
 Settings settings;
 WebFrontend frontend(80, &settings);
-AccessPoint accessPoint(IPAddress(192, 168, 222, 1), IPAddress(192, 168, 222, 1), IPAddress(255, 255, 225, 0), "precipitationSensor");
+AccessPoint accessPoint(IPAddress(192, 168, 222, 1), IPAddress(192, 168, 222, 1), IPAddress(255, 255, 225, 0), "ps");
+Watchdog watchdog;
 
 // FHEM server settings
 IPAddress serverIP;
@@ -224,6 +236,7 @@ void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String
       delay(500);
       Serial.print(".");
       digitalWrite(DEBUG_GPIO_ISR, retryCounter % 2 == 0);
+      watchdog.Handle();
     }
 
     if (WiFi.status() == WL_CONNECTED) {
@@ -339,8 +352,13 @@ void setup()
   uint32_t startProcessTS;
   
   Serial.begin(115200);
-  delay(10);
+  delay(50);
   Serial.println();
+
+  Serial.println("Chip ID: " + Tools::GetChipId());
+  Serial.println("Chip Revision: " + Tools::GetChipRevision());
+
+  watchdog.Begin(32, 1);
 
   // Get the settings
   settings.BaseData.NrOfBins = NR_OF_BINS;
@@ -380,7 +398,7 @@ void setup()
   analogSetClockDiv(1);
   adcAttachPin(ADC_PIN_NR);
 
-  ArduinoOTA.setHostname("precipitationSensorESP32");
+  ArduinoOTA.setHostname(String("precipitationSensor_" + Tools::GetChipId()).c_str());
   ArduinoOTA.onStart([]() { timerAlarmDisable(timer);});
   ArduinoOTA.onEnd([]() {});
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {});
@@ -395,6 +413,7 @@ void setup()
   startProcessTS = millis() + (settings.GetUInt("StartupDelay", 5) * 1000);
   while (millis() < startProcessTS) {
     ArduinoOTA.handle();
+    watchdog.Handle();
   }
 
   // Set threshold for each bin individually
@@ -446,6 +465,7 @@ void loop()
   ArduinoOTA.handle();
   frontend.Handle();
   accessPoint.Handle();
+  watchdog.Handle();
 
   while (snapshotAvailable())
   {
