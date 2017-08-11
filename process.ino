@@ -35,7 +35,7 @@ void processSamples(uint16_t firstSampleIdx)
     RBidx = (firstSampleIdx + i) & (RINGBUFFER_SIZE - 1);
     sampleSUM += sampleRB[RBidx];
   }
-  ADCoffset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
+  sensorData.ADCoffset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
 
 
   // process each sample
@@ -45,13 +45,13 @@ void processSamples(uint16_t firstSampleIdx)
     sample = sampleRB[RBidx];
 
     if ((sample <= -2048) || (sample >= 2047))
-      clippingCtr++;
+      sensorData.clippingCtr++;
 
-    sample -= ADCoffset;
+    sample -= sensorData.ADCoffset;
 
     sampleABS = abs(sample);
-    if (sampleABS > ADCpeakSample)
-      ADCpeakSample = sampleABS;
+    if (sampleABS > sensorData.ADCpeakSample)
+      sensorData.ADCpeakSample = sampleABS;
 
     re[i] = sample << 4;
     im[i] = 0;

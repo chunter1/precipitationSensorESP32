@@ -67,13 +67,13 @@ void updateStatistics()
   {
     mag[binNr] = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
 
-    if (mag[binNr] > bin[binNr].magPeak)
-      bin[binNr].magPeak = mag[binNr];
+    if (mag[binNr] > sensorData.bin[binNr].magPeak)
+      sensorData.bin[binNr].magPeak = mag[binNr];
 
-    bin[binNr].magSum += mag[binNr];
+    sensorData.bin[binNr].magSum += mag[binNr];
     
-    if (mag[binNr] > bin[binNr].threshold)
-      bin[binNr].detections++;
+    if (mag[binNr] > sensorData.bin[binNr].threshold)
+      sensorData.bin[binNr].detections++;
   }
 }
 
@@ -87,29 +87,29 @@ void finalizeStatistics()
 
 
   // bin-level statistic
-  magAVG = 0;
-  magAVGkorr = 0;
-  magPeak = 0;
-  totalDetectionsCtr = 0;
+  sensorData.magAVG = 0;
+  sensorData.magAVGkorr = 0;
+  sensorData.magPeak = 0;
+  sensorData.totalDetectionsCtr = 0;
   
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
-    bin[binNr].magAVG = bin[binNr].magSum / snapshotCtr;
-    bin[binNr].detections /= dropInFOVsnapshots_table[binNr];
+    sensorData.bin[binNr].magAVG = sensorData.bin[binNr].magSum / sensorData.snapshotCtr;
+    sensorData.bin[binNr].detections /= dropInFOVsnapshots_table[binNr];
 
     if (binNr > 0)
     {
-      magAVG += bin[binNr].magSum;
-      magAVGkorr += (bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
+      sensorData.magAVG += sensorData.bin[binNr].magSum;
+      sensorData.magAVGkorr += (sensorData.bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
       
-      totalDetectionsCtr += bin[binNr].detections;
+      sensorData.totalDetectionsCtr += sensorData.bin[binNr].detections;
       
-      if (bin[binNr].magPeak > magPeak)
-        magPeak = bin[binNr].magPeak;
+      if (sensorData.bin[binNr].magPeak > sensorData.magPeak)
+        sensorData.magPeak = sensorData.bin[binNr].magPeak;
     }
   }  
-  magAVG = magAVG / snapshotCtr / (NR_OF_BINS - 1);
-  magAVGkorr = magAVGkorr / snapshotCtr / (NR_OF_BINS - 1);
+  sensorData.magAVG = sensorData.magAVG / sensorData.snapshotCtr / (NR_OF_BINS - 1);
+  sensorData.magAVGkorr = sensorData.magAVGkorr / sensorData.snapshotCtr / (NR_OF_BINS - 1);
  
   
   // group-level statistics
@@ -117,23 +117,23 @@ void finalizeStatistics()
   {
     magSumGroup = 0;
     magSumGroupKorr = 0;
-    binGroup[binGroupNr].magPeak = 0;
-    binGroup[binGroupNr].detections = 0;
+    sensorData.binGroup[binGroupNr].magPeak = 0;
+    sensorData.binGroup[binGroupNr].detections = 0;
     
     // scan through all bins within the group
     for (uint16_t binNr = binGroupBoundaries.firstBin[binGroupNr]; binNr <= binGroupBoundaries.lastBin[binGroupNr]; binNr++)
     {
-      magSumGroup += bin[binNr].magSum;
-      magSumGroupKorr += ((float)bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
+      magSumGroup += sensorData.bin[binNr].magSum;
+      magSumGroupKorr += ((float)sensorData.bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
 
-      if (bin[binNr].magPeak > binGroup[binGroupNr].magPeak)
-        binGroup[binGroupNr].magPeak = bin[binNr].magPeak;
+      if (sensorData.bin[binNr].magPeak > sensorData.binGroup[binGroupNr].magPeak)
+        sensorData.binGroup[binGroupNr].magPeak = sensorData.bin[binNr].magPeak;
       
-      binGroup[binGroupNr].detections += bin[binNr].detections;
+      sensorData.binGroup[binGroupNr].detections += sensorData.bin[binNr].detections;
     }
     
-    binGroup[binGroupNr].magAVG = (float)magSumGroup / snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);        
-    binGroup[binGroupNr].magAVGkorr = (float)magSumGroupKorr / snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
+    sensorData.binGroup[binGroupNr].magAVG = (float)magSumGroup / sensorData.snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
+    sensorData.binGroup[binGroupNr].magAVGkorr = (float)magSumGroupKorr / sensorData.snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
   }
 }
 
@@ -145,26 +145,26 @@ void resetStatistics()
   // bin-level statistic
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
-    bin[binNr].magSum = 0;
-    bin[binNr].magAVG = 0;
-    bin[binNr].magPeak = 0;
-    bin[binNr].detections = 0;
+    sensorData.bin[binNr].magSum = 0;
+    sensorData.bin[binNr].magAVG = 0;
+    sensorData.bin[binNr].magPeak = 0;
+    sensorData.bin[binNr].detections = 0;
   }
 
   // group-level statistics
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++)
   {
-    binGroup[binGroupNr].magSum = 0;
-    binGroup[binGroupNr].magAVG = 0;
-    binGroup[binGroupNr].magAVGkorr = 0;
-    binGroup[binGroupNr].magPeak = 0;
-    binGroup[binGroupNr].detections = 0;
+    sensorData.binGroup[binGroupNr].magSum = 0;
+    sensorData.binGroup[binGroupNr].magAVG = 0;
+    sensorData.binGroup[binGroupNr].magAVGkorr = 0;
+    sensorData.binGroup[binGroupNr].magPeak = 0;
+    sensorData.binGroup[binGroupNr].detections = 0;
   }
 
-  magAVG = 0;
-  magAVGkorr = 0;
-  magPeak = 0;
-  ADCpeakSample = 0;
-  clippingCtr = 0;
-  totalDetectionsCtr = 0;
+  sensorData.magAVG = 0;
+  sensorData.magAVGkorr = 0;
+  sensorData.magPeak = 0;
+  sensorData.ADCpeakSample = 0;
+  sensorData.clippingCtr = 0;
+  sensorData.totalDetectionsCtr = 0;
 }

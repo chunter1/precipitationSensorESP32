@@ -93,27 +93,32 @@
  * -) AccessPoint name is now ps-<ChipID>
  * -) Added watchdog triggering on GPIO32
  *
-\***************************************************************************/
+ * Version v0.8.2 11.08.2017)
+ * -) Refactored the publisher
+ * -) Added "OTA upload"
+ *
+ \***************************************************************************/
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.8.1"
+#define PROGVERS                         "0.8.2"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
-#include <ArduinoOTA.h>
 #include "StateManager.h"
 #include "Settings.h"
 #include "WebFrontend.h"
 #include "AccessPoint.h"
 #include "Tools.h"
 #include "Watchdog.h"
-
+#include <ArduinoOTA.h>
+#include "OTAUpdate.h"
+#include "Update.h"
+#include "Publisher.h"
+#include "SensorData.h"
 
 #define DEFAULT_SSID                      "SSID"
 #define DEFAULT_PASSWORD                  "PASSWORD"
-#define DEFAULT_FHEM_IP                   "192.168.1.100"
-#define DEFAULT_FHEM_PORT                 8083
 #define DEFAULT_PUBLISH_INTERVAL          60
 #define DEFAULT_DETECTION_TRESHOLD        30
                          
@@ -136,11 +141,9 @@ Settings settings;
 WebFrontend frontend(80, &settings);
 AccessPoint accessPoint(IPAddress(192, 168, 222, 1), IPAddress(192, 168, 222, 1), IPAddress(255, 255, 225, 0), "ps");
 Watchdog watchdog;
-
-// FHEM server settings
-IPAddress serverIP;
-uint16_t serverPORT = 0;
-String dummyPrefix;
+OTAUpdate ota;
+Publisher publisher;
+SensorData sensorData(NR_OF_BINS, NR_OF_BIN_GROUPS);
 
 volatile uint32_t samplePtrIn;
 volatile uint32_t samplePtrOut;
@@ -150,24 +153,10 @@ volatile uint32_t RBoverflow;
 uint publishInterval;
 uint detectionTreshold;    // Detection threshold highly depends on gain and sensor->drop distance
 uint mountingAngle;
-
-uint32_t snapshotCtr;
 uint8_t snapProcessed_flag;
-uint8_t clippingCtr;
-uint32_t RBoverflowCtr;
-uint16_t ADCpeakSample;
 
 int16_t re[NR_OF_FFT_SAMPLES];
 int16_t im[NR_OF_FFT_SAMPLES];
-
-// =========== statistics variables
-
-uint32_t totalDetectionsCtr;
-int32_t ADCoffset;
-
-float magAVG;
-float magAVGkorr;
-uint16_t magPeak;
 
 struct BIN_GROUP_BOUNDARIES {
   uint8_t firstBin[NR_OF_BIN_GROUPS] = {
@@ -184,34 +173,6 @@ struct BIN_GROUP_BOUNDARIES {
   };
 } binGroupBoundaries;
 
-struct FFT_BIN {
-  uint32_t threshold;
-  uint32_t magSum;
-  float magAVG;
-  uint16_t magPeak;
-  uint32_t detections;
-} bin[NR_OF_BINS];
-
-struct FFT_BIN_GROUP {
-  uint32_t magSum;
-  float magAVG;
-  float magAVGkorr;
-  uint16_t magPeak;
-  uint32_t detections;
-} binGroup[NR_OF_BIN_GROUPS];
-
-IPAddress IPAddressFromString(String ipString) {
-  byte o1p = ipString.indexOf(".", 0);
-  byte o2p = ipString.indexOf(".", o1p + 1);
-  byte o3p = ipString.indexOf(".", o2p + 1);
-  byte o4p = ipString.indexOf(".", o3p + 1);
-
-  return IPAddress(strtol(ipString.substring(0, o1p).c_str(), NULL, 10),
-    strtol(ipString.substring(o1p + 1, o2p).c_str(), NULL, 10),
-    strtol(ipString.substring(o2p + 1, o3p).c_str(), NULL, 10),
-    strtol(ipString.substring(o3p + 1, o4p).c_str(), NULL, 10));
-}
-
 void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String staticIP, String staticMask, String staticGW, String hostName) {
   if (ctSSID.length() > 0 && ctSSID != "---") {
     unsigned long startMillis = millis();
@@ -219,13 +180,14 @@ void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String
     WiFi.begin(ctSSID.c_str(), ctPass.c_str());
     if (staticIP.length() > 7 && staticMask.length() > 7) {
       if (staticGW.length() < 7) {
-        WiFi.config(IPAddressFromString(staticIP), IPAddressFromString(staticGW), (uint32_t)0);
+        WiFi.config(Tools::IPAddressFromString(staticIP), Tools::IPAddressFromString(staticGW), (uint32_t)0);
       }
       else {
-        WiFi.config(IPAddressFromString(staticIP), IPAddressFromString(staticGW), IPAddressFromString(staticMask));
+        WiFi.config(Tools::IPAddressFromString(staticIP), Tools::IPAddressFromString(staticGW), Tools::IPAddressFromString(staticMask));
       }
     }
 
+    delay(5);
     WiFi.setHostname(hostName.c_str());
 
     Serial.println("Connect " + String(timeout) + " seconds to an AP (SSID " + String(nbr) + ")");
@@ -300,6 +262,12 @@ static bool StartWifi(Settings *settings) {
   Serial.println("Starting frontend");
   frontend.SetPassword(settings->Get("FrontPass1", ""));
   frontend.Begin(&stateManager);
+  
+  Serial.println("Starting OTA");
+  ota.Begin(frontend.GetWebServer(), [] {
+    stopCapture();
+  });
+
 
   return result;
 }
@@ -313,7 +281,7 @@ void IRAM_ATTR onTimer()
   uint32_t diff;
 
   data = analogRead(ADC_PIN_NR);
-
+  
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 
   sampleRB[samplePtrIn] = data - 2048;
@@ -365,13 +333,6 @@ void setup()
   settings.BaseData.NrOfBinGroups = NR_OF_BIN_GROUPS;
   settings.Read();
 
-  // Get the FHEM connection from the settings
-  dummyPrefix = settings.Get("DPR", "PRECIPITATION_SENSOR");
-  serverIP = IPAddressFromString(settings.Get("fhemIP", DEFAULT_FHEM_IP));
-  serverPORT = settings.GetUInt("fhemPort", DEFAULT_FHEM_PORT);
-  Serial.println("FHEM IP=" + serverIP.toString());
-  Serial.println("FHEM Port=" + String(serverPORT));
-
   // Get the measurement settings
   publishInterval = settings.GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
   detectionTreshold = settings.GetUInt("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
@@ -398,13 +359,6 @@ void setup()
   analogSetClockDiv(1);
   adcAttachPin(ADC_PIN_NR);
 
-  ArduinoOTA.setHostname(String("precipitationSensor_" + Tools::GetChipId()).c_str());
-  ArduinoOTA.onStart([]() { timerAlarmDisable(timer);});
-  ArduinoOTA.onEnd([]() {});
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {});
-  ArduinoOTA.onError([](ota_error_t error) {});
-  ArduinoOTA.begin();
-
   timer = timerBegin(0, 868, true);
   settings.SetTimer(timer);
   timerAttachInterrupt(timer, &onTimer, true);
@@ -412,7 +366,7 @@ void setup()
 
   startProcessTS = millis() + (settings.GetUInt("StartupDelay", 5) * 1000);
   while (millis() < startProcessTS) {
-    ArduinoOTA.handle();
+    ota.Handle();
     watchdog.Handle();
   }
 
@@ -421,13 +375,18 @@ void setup()
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
     if (binNr < 8)
-      bin[binNr].threshold = detectionTreshold * 3;     // quick & dirty test!
+      sensorData.bin[binNr].threshold = detectionTreshold * 3;     // quick & dirty test!
     else if (binNr < 16)
-      bin[binNr].threshold = detectionTreshold * 2;     // quick & dirty test!
+      sensorData.bin[binNr].threshold = detectionTreshold * 2;     // quick & dirty test!
     else
-      bin[binNr].threshold = detectionTreshold;
+      sensorData.bin[binNr].threshold = detectionTreshold;
   }
+
+
+  // Initialize the publisher
+  publisher.Begin(&settings);
   
+  // Go
   startCapture();
 
   Serial.println("Setup done");
@@ -462,10 +421,14 @@ void loop()
 {
   stateManager.SetLoopStart();
 
-  ArduinoOTA.handle();
+  ota.Handle();
   frontend.Handle();
   accessPoint.Handle();
   watchdog.Handle();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    ota.Handle();
+  }
 
   while (snapshotAvailable())
   {
@@ -478,43 +441,26 @@ void loop()
     if (!RBoverflow)
     {
       updateStatistics();
-      snapshotCtr++;
+      sensorData.snapshotCtr++;
 
-      if (snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
+      if (sensorData.snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
       {
         //stopCapture();
 
         finalizeStatistics();
-  
-        //consoleOut_samples(0, 40);
-        //consoleOut_bins(120, 140);
 
-        if (settings.GetBool("PubCompact", true)) {
-          publish_compact((char*)dummyPrefix.c_str());
-        }
-        if (settings.GetBool("PubBC", false)) {
-          String bc = dummyPrefix + String("_BINS_COUNT");
-          publish_bins_count((char*)bc.c_str());
-        }
-        if (settings.GetBool("PubBM", false)) {
-          String bm = dummyPrefix + String("_BINS_MAG");
-          publish_bins_mag((char*)bm.c_str());
-        }
-        if (settings.GetBool("PubBG", false)) {
-          String bg = dummyPrefix + String("_BIN_GROUPS");
-          publish_bins_mag((char*)bg.c_str());
-        }
+        publisher.Publish(&sensorData);
 
         resetStatistics();
         
-        RBoverflowCtr = 0;
-        snapshotCtr = 0;
+        sensorData.RBoverflowCtr = 0;
+        sensorData.snapshotCtr = 0;
         
         //startCapture();
       }
     } else {
       Serial.println("RINGBUFFER OVERFLOW!");
-      RBoverflowCtr++;
+      sensorData.RBoverflowCtr++;
       RBoverflow = 0;
     }
 

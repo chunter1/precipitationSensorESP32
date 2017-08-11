@@ -20,7 +20,7 @@
 
 void consoleOut_samples(uint16_t startIdx, uint16_t stopIdx)
 {
-  Serial.printf("\nSnapshots: %d   ADC-offset: %d   Clipping: %d   ADCpeak: %d\n", snapshotCtr, ADCoffset, clippingCtr, ADCpeakSample);
+  Serial.printf("\nSnapshots: %d   ADC-offset: %d   Clipping: %d   ADCpeak: %d\n", sensorData.snapshotCtr, sensorData.ADCoffset, sensorData.clippingCtr, sensorData.ADCpeakSample);
 
   if ((startIdx >= RINGBUFFER_SIZE) || (stopIdx >= RINGBUFFER_SIZE))
   {
@@ -49,7 +49,7 @@ void consoleOut_samples(uint16_t startIdx, uint16_t stopIdx)
 // *****************************************
 void consoleOut_bins(uint16_t startIdx, uint16_t stopIdx)
 {
-  Serial.printf("\nSnapshots: %d\n", snapshotCtr);
+  Serial.printf("\nSnapshots: %d\n", sensorData.snapshotCtr);
 
   if ((startIdx >= NR_OF_BINS) || (stopIdx >= NR_OF_BINS))
   {
@@ -63,12 +63,12 @@ void consoleOut_bins(uint16_t startIdx, uint16_t stopIdx)
     
     for (uint8_t x = 0; x < BARS; x++)
     {
-      if (x < ((bin[binNr].magPeak * BARS) / 16383))
+      if (x < ((sensorData.bin[binNr].magPeak * BARS) / 16383))
         Serial.printf("#");
       else
         Serial.printf("-");
     }
 
-    Serial.printf(" %d\n", bin[binNr].magPeak);
+    Serial.printf(" %d\n", sensorData.bin[binNr].magPeak);
   }
 }
