@@ -20,8 +20,13 @@
  * 
  * Project description:
  * ====================
- * This project uses an IMP-165 radarsensor with preamp and an ESP8266 to classify
- * the type of precipitation/hydrometeors by measuring the speed/doppler frequency.
+ * This project uses an radar sensor modul a preamp and an ESP32 to classify the type
+ * of precipitation/hydrometeors by measuring the speed/doppler frequency.
+ * The recommended radar sensor moduls are the IPM-170 and RSM-1700 because of their
+ * symmetric radiation pattern.
+ * Mounted in a vertival tube, facing upwards is the recommended setup.
+ * The IPM-165 (or CDM-324, not yet tested) may be used instead, if direction independency
+ * does not matter.
  * Working on 24 GHz, the radar sensor gives a doppler frequency of 161 Hz per 1 m/s speed.
  * Using a 45° tilted radar sensor with the following FFT settings, the hydrometeor speed
  * can be resolved in 0,18 m/s steps within a speed-range of 0,18...47,71 m/s.
