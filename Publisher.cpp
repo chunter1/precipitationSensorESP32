@@ -46,7 +46,7 @@ void Publisher::Publish(SensorData *sensorData) {
   if (m_settings->GetBool("PubCompact", true)) {
     m_dummySuffix = "";
     AddCommonReadings();
-    AddCompactReadings();
+    AddCompactReadings();    
   }
   if (m_settings->GetBool("PubBC", false)) {
     m_dummySuffix = "_BINS_COUNT";
@@ -62,6 +62,22 @@ void Publisher::Publish(SensorData *sensorData) {
     m_dummySuffix = "_BIN_GROUPS";
     AddCommonReadings();
     AddBinGroupsReadings();
+  }
+  if (m_settings->GetBool("PubBMA", false)) {
+    m_dummySuffix = "";
+    AddBinMagAVGReading();
+  }
+  if (m_settings->GetBool("PubBMAK", false)) {
+    m_dummySuffix = "";
+    AddBinMagAVGkorrReading();
+  }
+  if (m_settings->GetBool("PubBMAKT", false)) {
+    m_dummySuffix = "";
+    AddBinMagAVGkorrThreshReading();
+  }
+  if (m_settings->GetBool("PubBTHRESHS", false)) {
+    m_dummySuffix = "";
+    AddBinMagAVGthresholdsReading();
   }
 
   Transmit();
@@ -99,6 +115,7 @@ void Publisher::AddCommonReadings() {
   AddReading("MagPeak", m_sensorData->magPeak);
   AddReading("MagAVG", m_sensorData->magAVG);
   AddReading("MagAVGkorr", m_sensorData->magAVGkorr);
+  AddReading("MagAVGkorrThresh", m_sensorData->magAVGkorrThresh);
   AddReading("state", m_sensorData->totalDetectionsCtr);
 }
 
@@ -107,17 +124,19 @@ void Publisher::AddCompactReadings() {
   String groupMagPeak;
   String groupMagAVG;
   String groupMagAVGkorr;
+  String groupMagAVGkorrThresh;
   for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
     groupDetections += String(m_sensorData->binGroup[i].detections) + "%20";
     groupMagPeak += String(m_sensorData->binGroup[i].magPeak) + "%20";
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + "%20";
     groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + "%20";
+    groupMagAVGkorrThresh += String(m_sensorData->binGroup[i].magAVGkorrThresh, 4) + "%20";
   }
   AddReading("GroupDetections", groupDetections);
   AddReading("GroupMagPeak", groupMagPeak);
   AddReading("GroupMagAVG", groupMagAVG);
   AddReading("GroupMagAVGkorr", groupMagAVGkorr);
-
+  AddReading("GroupMagAVGkorrThresh", groupMagAVGkorrThresh);
 }
 
 void Publisher::AddBinsCountReadings() {
@@ -224,4 +243,34 @@ void Publisher::AddBinGroupsReadings() {
      
 }
 
+void Publisher::AddBinMagAVGReading() {
+  String binsMagAVG;
+  for (uint16_t binNr = 0; binNr < m_settings->BaseData.NrOfBins; binNr++) {
+    binsMagAVG += String(m_sensorData->bin[binNr].magAVG, 4) + "%20";
+  }
+  AddReading("BinMagAVG", binsMagAVG);
+}
 
+void Publisher::AddBinMagAVGkorrReading() {
+  String binsMagAVGkorr;
+  for (uint16_t binNr = 0; binNr < m_settings->BaseData.NrOfBins; binNr++) {
+    binsMagAVGkorr += String(m_sensorData->bin[binNr].magAVGkorr, 4) + "%20";
+  }
+  AddReading("BinMagAVGkorr", binsMagAVGkorr);
+}
+
+void Publisher::AddBinMagAVGkorrThreshReading() {
+  String binsMagAVGkorrThresh;
+  for (uint16_t binNr = 0; binNr < m_settings->BaseData.NrOfBins; binNr++) {
+    binsMagAVGkorrThresh += String(m_sensorData->bin[binNr].magAVGkorrThresh, 4) + "%20";
+  }
+  AddReading("BinMagAVGkorrThresh", binsMagAVGkorrThresh);
+}
+
+void Publisher::AddBinMagAVGthresholdsReading() {
+  String binsThreshold;
+  for (uint16_t binNr = 0; binNr < m_settings->BaseData.NrOfBins; binNr++) {
+    binsThreshold += String(m_sensorData->bin[binNr].threshold, 4) + "%20";
+  }
+  AddReading("BinThreshold", binsThreshold);
+}

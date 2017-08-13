@@ -364,6 +364,22 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += m_settings->Get("PubBG", "false") == "true" ? "checked" : "";
       data += F(">Bin groups&nbsp;&nbsp;&nbsp;");
 
+      data += F("<input name='PubBMA' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBMA", "false") == "true" ? "checked" : "";
+      data += F(">Bins MA&nbsp;&nbsp;&nbsp;");
+
+      data += F("<input name='PubBMAK' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBMAK", "false") == "true" ? "checked" : "";
+      data += F(">Bins MAK&nbsp;&nbsp;&nbsp;");
+
+      data += F("<input name='PubBMAKT' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBMAKT", "false") == "true" ? "checked" : "";
+      data += F(">Bins MAKT&nbsp;&nbsp;&nbsp;");
+
+      data += F("<input name='PubBTHRESHS' type='checkbox' value='true' ");
+      data += m_settings->Get("PubBTHRESHS", "false") == "true" ? "checked" : "";
+      data += F(">Bins Thresh&nbsp;&nbsp;&nbsp;");
+
       data += F("</td></tr>");
 
       // Bin group boundaries

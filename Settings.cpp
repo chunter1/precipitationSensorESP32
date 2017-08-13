@@ -207,3 +207,6 @@ byte Settings::GetByte(String key, byte defaultValue) {
   return (byte)Get(key, (String)defaultValue).toInt();
 }
 
+float Settings::GetFloat(String key, float defaultValue) {
+  return Get(key, String(defaultValue)).toFloat();
+}

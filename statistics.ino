@@ -21,7 +21,7 @@
  * visible to the radar sensor, based on an average 1m FOV with a 0° sensor tilt
  */
 const float dropInFOVsnapshots_table[NR_OF_BINS] = {
-  0.00, 322.67, 161.33, 107.56, 80.67, 64.53, 53.78, 46.10,
+  1.00, 322.67, 161.33, 107.56, 80.67, 64.53, 53.78, 46.10,
   40.33, 35.85, 32.27, 29.33, 26.89, 24.82, 23.05, 21.51,
   20.17, 18.98, 17.93, 16.98, 16.13, 15.37, 14.67, 14.03,
   13.44, 12.91, 12.41, 11.95, 11.52, 11.13, 10.76, 10.41,
@@ -60,19 +60,17 @@ const float dropInFOVsnapshots_table[NR_OF_BINS] = {
 // **************************************************
 void updateStatistics()
 {
-  uint16_t mag[NR_OF_BINS];
-
-  // Bin-level statistics (exclude DC-bin)
-  for (uint16_t binNr = 1; binNr < NR_OF_BINS; binNr++)
+  for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
-    mag[binNr] = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
+    uint16_t mag = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
 
-    if (mag[binNr] > sensorData.bin[binNr].magPeak)
-      sensorData.bin[binNr].magPeak = mag[binNr];
+    if (mag > sensorData.bin[binNr].magPeak)
+      sensorData.bin[binNr].magPeak = mag;
 
-    sensorData.bin[binNr].magSum += mag[binNr];
-    
-    if (mag[binNr] > sensorData.bin[binNr].threshold)
+    sensorData.bin[binNr].magSum += mag;
+
+    // TODO: Evalute correction factor
+    if (mag > (sensorData.bin[binNr].threshold * 2.4))
       sensorData.bin[binNr].detections++;
   }
 }
@@ -84,30 +82,38 @@ void finalizeStatistics()
 {
   uint32_t magSumGroup;
   float magSumGroupKorr;
+  float magSumGroupKorrThresh;
 
 
-  // bin-level statistic
+  // bin-level statistics
   sensorData.magAVG = 0;
   sensorData.magAVGkorr = 0;
+  sensorData.magAVGkorrThresh = 0;
   sensorData.magPeak = 0;
   sensorData.totalDetectionsCtr = 0;
   
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
-    sensorData.bin[binNr].magAVG = sensorData.bin[binNr].magSum / sensorData.snapshotCtr;
+    sensorData.bin[binNr].magAVG = (float)sensorData.bin[binNr].magSum / sensorData.snapshotCtr;
+    sensorData.bin[binNr].magAVGkorr = sensorData.bin[binNr].magAVG / dropInFOVsnapshots_table[binNr];
     sensorData.bin[binNr].detections /= dropInFOVsnapshots_table[binNr];
 
     if (binNr > 0)
     {
       sensorData.magAVG += sensorData.bin[binNr].magSum;
-      sensorData.magAVGkorr += (sensorData.bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
-      
+      sensorData.magAVGkorr += sensorData.bin[binNr].magSum / dropInFOVsnapshots_table[binNr];
       sensorData.totalDetectionsCtr += sensorData.bin[binNr].detections;
       
       if (sensorData.bin[binNr].magPeak > sensorData.magPeak)
         sensorData.magPeak = sensorData.bin[binNr].magPeak;
+
+      if (sensorData.bin[binNr].magAVG > sensorData.bin[binNr].threshold) {
+        sensorData.bin[binNr].magAVGkorrThresh = (sensorData.bin[binNr].magAVG - sensorData.bin[binNr].threshold) / dropInFOVsnapshots_table[binNr];
+        sensorData.magAVGkorrThresh += sensorData.bin[binNr].magAVGkorrThresh;
+      }
     }
-  }  
+  }
+  
   sensorData.magAVG = sensorData.magAVG / sensorData.snapshotCtr / (NR_OF_BINS - 1);
   sensorData.magAVGkorr = sensorData.magAVGkorr / sensorData.snapshotCtr / (NR_OF_BINS - 1);
  
@@ -117,6 +123,7 @@ void finalizeStatistics()
   {
     magSumGroup = 0;
     magSumGroupKorr = 0;
+    magSumGroupKorrThresh = 0;
     sensorData.binGroup[binGroupNr].magPeak = 0;
     sensorData.binGroup[binGroupNr].detections = 0;
     
@@ -125,6 +132,9 @@ void finalizeStatistics()
     {
       magSumGroup += sensorData.bin[binNr].magSum;
       magSumGroupKorr += ((float)sensorData.bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
+      
+      if (sensorData.bin[binNr].magAVG > sensorData.bin[binNr].threshold)
+        magSumGroupKorrThresh += (sensorData.bin[binNr].magAVG - sensorData.bin[binNr].threshold) / dropInFOVsnapshots_table[binNr];
 
       if (sensorData.bin[binNr].magPeak > sensorData.binGroup[binGroupNr].magPeak)
         sensorData.binGroup[binGroupNr].magPeak = sensorData.bin[binNr].magPeak;
@@ -134,6 +144,7 @@ void finalizeStatistics()
     
     sensorData.binGroup[binGroupNr].magAVG = (float)magSumGroup / sensorData.snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
     sensorData.binGroup[binGroupNr].magAVGkorr = (float)magSumGroupKorr / sensorData.snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
+    sensorData.binGroup[binGroupNr].magAVGkorrThresh = (float)magSumGroupKorrThresh / sensorData.snapshotCtr / (binGroupBoundaries.lastBin[binGroupNr] - binGroupBoundaries.firstBin[binGroupNr] + 1);
   }
 }
 
@@ -147,6 +158,8 @@ void resetStatistics()
   {
     sensorData.bin[binNr].magSum = 0;
     sensorData.bin[binNr].magAVG = 0;
+    sensorData.bin[binNr].magAVGkorr = 0;
+    sensorData.bin[binNr].magAVGkorrThresh = 0;
     sensorData.bin[binNr].magPeak = 0;
     sensorData.bin[binNr].detections = 0;
   }
@@ -157,12 +170,14 @@ void resetStatistics()
     sensorData.binGroup[binGroupNr].magSum = 0;
     sensorData.binGroup[binGroupNr].magAVG = 0;
     sensorData.binGroup[binGroupNr].magAVGkorr = 0;
+    sensorData.binGroup[binGroupNr].magAVGkorrThresh = 0;
     sensorData.binGroup[binGroupNr].magPeak = 0;
     sensorData.binGroup[binGroupNr].detections = 0;
   }
 
   sensorData.magAVG = 0;
   sensorData.magAVGkorr = 0;
+  sensorData.magAVGkorrThresh = 0;
   sensorData.magPeak = 0;
   sensorData.ADCpeakSample = 0;
   sensorData.clippingCtr = 0;

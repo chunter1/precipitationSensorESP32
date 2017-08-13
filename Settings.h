@@ -34,6 +34,7 @@ public:
   uint GetUInt(String key, uint defaultValue);
   bool GetBool (String key, bool defaultValue);
   byte GetByte(String key, byte defaultValue);
+  float GetFloat(String key, float defaultValue);
   
   String ToString();
   void FromString(String settings);

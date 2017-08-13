@@ -4,9 +4,12 @@
 #include "Arduino.h"
 
 struct FFT_BIN {
-  uint32_t threshold;
+  //uint32_t threshold;
+  float threshold;
   uint32_t magSum;
   float magAVG;
+  float magAVGkorr;
+  float magAVGkorrThresh;
   uint16_t magPeak;
   uint32_t detections;
 };
@@ -15,6 +18,7 @@ struct FFT_BIN_GROUP {
   uint32_t magSum;
   float magAVG;
   float magAVGkorr;
+  float magAVGkorrThresh;
   uint16_t magPeak;
   uint32_t detections;
 };
@@ -28,6 +32,7 @@ public:
   int32_t ADCoffset;
   float magAVG;
   float magAVGkorr;
+  float magAVGkorrThresh;
   uint16_t magPeak;
   uint32_t RBoverflowCtr;
   uint16_t ADCpeakSample;

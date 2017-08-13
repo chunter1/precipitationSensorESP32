@@ -31,7 +31,10 @@ private:
   void AddBinsCountReadings();
   void AddBinsMagReadings();
   void AddBinGroupsReadings();
-
+  void AddBinMagAVGReading();
+  void AddBinMagAVGkorrReading();
+  void AddBinMagAVGkorrThreshReading();
+  void AddBinMagAVGthresholdsReading();
   void Transmit();
 
 };
