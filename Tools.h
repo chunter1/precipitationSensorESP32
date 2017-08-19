@@ -10,6 +10,8 @@ public:
   static String GetChipId();
   static String GetChipRevision();
   static IPAddress IPAddressFromString(String ipString);
+  static byte UTF8ToASCII(byte ascii);
+  static String UTF8ToASCII(String utf8);
 
 };
 

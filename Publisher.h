@@ -6,12 +6,14 @@
 #include "IPAddress.h"
 #include "Settings.h"
 #include "SensorData.h"
+#include "StateManager.h"
+#include "DataPort.h"
 
 #define NR_OF_BARS 32
 
 class Publisher {
 public:
-  void Begin(Settings *settings);
+  void Begin(Settings *settings, DataPort *dataPort);
   void Publish(SensorData *sensorData);
 
 private:
@@ -21,7 +23,9 @@ private:
   String m_readings;
   uint16_t m_nbrOfReadings;
   SensorData *m_sensorData;
+  DataPort *m_dataPort;
 
+  void SendToDataPort();
   void AddReading(String name, String value);
   void AddReading(String name, uint32_t value);
   void AddReading(String name, int32_t value);

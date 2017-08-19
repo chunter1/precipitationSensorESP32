@@ -264,13 +264,15 @@ void WebFrontend::Begin(StateManager *stateManager) {
   m_webserver.on("/setup", [this]() {
     if (IsAuthentified()) {
       String result;
-      m_settings->Clear();
-      m_settings->Read();
+      ////m_settings->Clear();
+      ////m_settings->Read();
  
       m_webserver.setContentLength(CONTENT_LENGTH_UNKNOWN);
       m_webserver.send(200, "text/html", "");
 
       m_webserver.sendContent(GetTop() + GetNavigation());
+
+      bool hasNoConfiguration = m_settings->Get("PublishInterval", "???") == "???";
 
       String data;
       data += F("<form method='get' action='save'><table>");
@@ -346,38 +348,45 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += m_settings->Get("DetectionThreshold", "30");
       data += F("'></td></tr>");
 
+      // Data port
+      data += F("<tr><td><label>Publish: </label></td><td>");
+      data += F("<input name='UseDataPort' type='checkbox' value='true' ");
+      data += m_settings->GetBool("UseDataPort", false) ? "checked" : "";
+      data += F(">Use data port (81)&nbsp;&nbsp;&nbsp;");
+      data += F("</td></tr>");
+
       // Flags
       data += F("<tr><td><label>Publish: </label></td><td>");
       data += F("<input name='PubCompact' type='checkbox' value='true' "); 
-      data += m_settings->Get("PubCompact", "true") == "true" ? "checked" : ""; 
+      data += m_settings->GetBool("PubCompact", false) || hasNoConfiguration ? "checked" : "";
       data += F(">Compact&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBC' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBC", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBC", false) ? "checked" : "";
       data += F(">Bins count&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBM' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBM", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBM", false) ? "checked" : "";
       data += F(">Bins mag&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBG' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBG", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBG", false) ? "checked" : "";
       data += F(">Bin groups&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBMA' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBMA", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBMA", false) ? "checked" : "";
       data += F(">Bins MA&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBMAK' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBMAK", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBMAK", false) ? "checked" : "";
       data += F(">Bins MAK&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBMAKT' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBMAKT", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBMAKT", false) ? "checked" : "";
       data += F(">Bins MAKT&nbsp;&nbsp;&nbsp;");
 
       data += F("<input name='PubBTHRESHS' type='checkbox' value='true' ");
-      data += m_settings->Get("PubBTHRESHS", "false") == "true" ? "checked" : "";
+      data += m_settings->GetBool("PubBTHRESHS", false) ? "checked" : "";
       data += F(">Bins Thresh&nbsp;&nbsp;&nbsp;");
 
       data += F("</td></tr>");

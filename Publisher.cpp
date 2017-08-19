@@ -1,35 +1,25 @@
 #include "Publisher.h"
 
-void Publisher::Begin(Settings *settings) {
+void Publisher::Begin(Settings *settings, DataPort *dataPort) {
   m_settings = settings;
+  m_dataPort = dataPort;
   m_dummyPrefix = m_settings->Get("DPR", "PRECIPITATION_SENSOR");
 }
 
 void Publisher::Transmit() {
   if (m_nbrOfReadings) {
-    unsigned long startTime = millis();
     WiFiClient client;
 
     String ip = m_settings->Get("fhemIP", "192.168.1.100");
     uint port = m_settings->GetUInt("fhemPort", 8083);
 
     String payload = String("/fhem?XHR=1&cmd=") + m_readings;
+    String post = String("POST ") + payload + F(" HTTP/1.1\r\nHost: ") + ip + F("\r\nConnection: close\r\n\r\n");
 
     if (client.connect(ip.c_str(), port)) {
       client.setNoDelay(true);
-
-      String post = String("POST ") + payload + F(" HTTP/1.1\r\nHost: ") + ip + F("\r\nConnection: close\r\n\r\n");
-
       client.print(post);
       client.stop();
-   
-      ////Serial.print("Transmitted ");
-      ////Serial.print(payload.length());
-      ////Serial.print(" byte for ");
-      ////Serial.print(m_nbrOfReadings);
-      ////Serial.print(" readings in ");
-      ////Serial.print(millis() - startTime);
-      ////Serial.println(" ms");
 
       m_readings = "";
       m_nbrOfReadings = 0;
@@ -38,12 +28,52 @@ void Publisher::Transmit() {
   }
 }
 
+void Publisher::SendToDataPort() {
+  String payload = "data=";
+  payload += "snapshots=" + String(m_sensorData->snapshotCtr) + ",";
+  payload += "ADCclipping=" + String(m_sensorData->clippingCtr) + ",";
+  payload += "ADCpeak=" + String((100 * (m_sensorData->ADCpeakSample > 2048 ? 2048 : m_sensorData->ADCpeakSample)) / 2048) + ",";
+  payload += "detections=" + String(m_sensorData->totalDetectionsCtr) + ",";
+  payload += "ADCoffset=" + String(m_sensorData->ADCoffset) + ",";
+  payload += "RBoverflows=" + String(m_sensorData->RBoverflowCtr) + ",";
+  payload += "MagPeak=" + String(m_sensorData->magPeak) + ",";
+  payload += "MagAVG=" + String(m_sensorData->magAVG) + ",";
+  payload += "MagAVGkorr=" + String(m_sensorData->magAVGkorr) + ",";
+  payload += "MagAVGkorrThresh=" + String(m_sensorData->magAVGkorrThresh) + ",";
+
+  String groupDetections;
+  String groupMagPeak;
+  String groupMagAVG;
+  String groupMagAVGkorr;
+  String groupMagAVGkorrThresh;
+
+  for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
+    groupDetections += String(m_sensorData->binGroup[i].detections) + " ";
+    groupMagPeak += String(m_sensorData->binGroup[i].magPeak) + " ";
+    groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + " ";
+    groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + " ";
+    groupMagAVGkorrThresh += String(m_sensorData->binGroup[i].magAVGkorrThresh, 8) + " ";
+  }
+
+  payload += "GroupDetections=" + groupDetections + ",";
+  payload += "GroupMagPeak=" + groupMagPeak + ",";
+  payload += "GroupMagAVG=" + groupMagAVG + ",";
+  payload += "GroupMagAVGkorr=" + groupMagAVGkorr + ",";
+  payload += "GroupMagAVGkorrThresh=" + groupMagAVGkorrThresh + ",";
+
+  m_dataPort->AddPayload(payload);
+}
+
 void Publisher::Publish(SensorData *sensorData) {
   m_sensorData = sensorData;
   m_readings = "";
   m_nbrOfReadings = 0;
 
-  if (m_settings->GetBool("PubCompact", true)) {
+  if (m_dataPort->IsEnabled()) {
+    SendToDataPort();
+  }
+
+  if (m_settings->GetBool("PubCompact", false)) {
     m_dummySuffix = "";
     AddCommonReadings();
     AddCompactReadings();    
@@ -130,7 +160,7 @@ void Publisher::AddCompactReadings() {
     groupMagPeak += String(m_sensorData->binGroup[i].magPeak) + "%20";
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + "%20";
     groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + "%20";
-    groupMagAVGkorrThresh += String(m_sensorData->binGroup[i].magAVGkorrThresh, 4) + "%20";
+    groupMagAVGkorrThresh += String(m_sensorData->binGroup[i].magAVGkorrThresh, 8) + "%20";
   }
   AddReading("GroupDetections", groupDetections);
   AddReading("GroupMagPeak", groupMagPeak);

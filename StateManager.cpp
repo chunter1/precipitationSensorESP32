@@ -70,6 +70,7 @@ String StateManager::GetVersion() {
 }
 
 String StateManager::GetUpTime() {
+  Update();
   return m_values.Get("UpTimeText","");
 }
 

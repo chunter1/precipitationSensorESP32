@@ -26,7 +26,6 @@ private:
   bool m_roolOverIsPossible = false;
   unsigned int m_uptimeDays = 0;
 
-  void Update();
    
 public:
   StateManager();
@@ -42,6 +41,8 @@ public:
   void Handle();
   void SetWiFiConnectTime(float connectTime);
   float GetWiFiConnectTime();
+  void Update();
+
 };
 
 #endif

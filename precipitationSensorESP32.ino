@@ -116,13 +116,18 @@
  * -) Changed "threshold" type from uint32_t to float (enter float value in web-frontend now)
  * -) Changed threshold factor table entries (TODO: check if automatic/dynamic and temperature compensated generation is necessary)
  * 
+ * Version v0.9.1 (19.08.2017)
+ * -) 8 decimals for GroupMagAVGkorrThresh
+ * -) DataPort
+ * -) FHEM module
+ *
  \***************************************************************************/
 
 // DO NOT USE! FOR DEVELOPMENT PURPOSE ONLY!
 // #define WIFI_OFF_DURING_MEASUREMENT
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.9.0"
+#define PROGVERS                         "0.9.1"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -138,6 +143,7 @@
 #include "Update.h"
 #include "Publisher.h"
 #include "SensorData.h"
+#include "DataPort.h"
 
 #define DEFAULT_SSID                      "SSID"
 #define DEFAULT_PASSWORD                  "PASSWORD"
@@ -166,6 +172,7 @@ Watchdog watchdog;
 OTAUpdate ota;
 Publisher publisher;
 SensorData sensorData(NR_OF_BINS, NR_OF_BIN_GROUPS);
+DataPort dataPort;
 
 volatile uint32_t samplePtrIn;
 volatile uint32_t samplePtrOut;
@@ -285,7 +292,8 @@ void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String
       }
     }
 
-    delay(5);
+    delay(50);
+    Serial.println("Hostname: " + hostName);
     WiFi.setHostname(hostName.c_str());
 
     Serial.println("Connect " + String(timeout) + " seconds to an AP (SSID " + String(nbr) + ")");
@@ -366,6 +374,10 @@ static bool StartWifi(Settings *settings) {
     stopCapture();
   });
 
+  if (settings->GetBool("UseDataPort", false)) {
+    Serial.println("Starting data port");
+    dataPort.Begin(81);
+  }
 
   return result;
 }
@@ -529,7 +541,7 @@ void setup()
   }
 
   // Initialize the publisher
-  publisher.Begin(&settings);
+  publisher.Begin(&settings, &dataPort);
   
   // Go
   startCapture();
@@ -559,6 +571,30 @@ uint8_t snapshotAvailable()
   return 0;
 }
 
+String CommandHandler(String command) {
+  String result;
+  command = Tools::UTF8ToASCII(command);
+  if (command.startsWith("alive")) {
+    result = "alive";
+  }
+  else if (command.startsWith("treshold=")) {
+    detectionThreshold = command.substring(9).toFloat();
+    settings.Add("DetectionThreshold", detectionThreshold);
+    Serial.println(detectionThreshold);
+  }
+  else if (command.startsWith("version")) {
+    result = "version=" + String(PROGVERS);
+  }
+  else if (command.startsWith("uptime")) {
+    result = "uptime=" +  stateManager.GetUpTime();
+  }
+  else if (command.startsWith("reboot")) {
+    ESP.restart();
+  }
+
+  return result;
+}
+
 // *****************************************
 // *****************************************
 // *****************************************
@@ -570,6 +606,9 @@ void loop()
   frontend.Handle();
   accessPoint.Handle();
   watchdog.Handle();
+  if(dataPort.IsEnabled()) {
+    dataPort.Handle(CommandHandler);
+  }
 
   if (WiFi.status() == WL_CONNECTED) {
     ota.Handle();

@@ -26,6 +26,8 @@ public:
   
   void Add(String key, String value);
   void Add(String key, int value);
+  void Add(String key, float value);
+
   void Remove(String key);
   bool Contains(String key);
   

@@ -70,6 +70,10 @@ void Settings::Add(String key, int value) {
   Add(key, String(value));
 }
 
+void Settings::Add(String key, float value) {
+  Add(key, String(value));
+}
+
 String Settings::ToString() {
   String result;
   result += m_data;

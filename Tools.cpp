@@ -41,3 +41,43 @@ IPAddress Tools::IPAddressFromString(String ipString) {
                    strtol(ipString.substring(o3p + 1, o4p).c_str(), NULL, 10));
 }
 
+byte Tools::UTF8ToASCII(byte utf8Char) {
+  byte result = 0;
+  static byte lastChar;
+  if (utf8Char < 128) {
+    lastChar = 0;
+    result = utf8Char;
+  }
+  else {
+    switch (lastChar) {
+    case 0xC2:
+      result = utf8Char;
+      break;
+    case 0xC3:
+      result = utf8Char | 0xC0;
+      break;
+    case 0x82:
+      if (utf8Char == 0xAC) {
+        result = 0x80;
+      }
+      else {
+        result = 0;
+      }
+      break;
+    }
+
+    lastChar = utf8Char;
+  }
+
+  return result;
+}
+String Tools::UTF8ToASCII(String utf8) {
+  String result = "";
+  for (uint i = 0; i < utf8.length(); i++) {
+    char c = UTF8ToASCII(utf8.charAt(i));
+    if (c != 0) {
+      result += c;
+    }
+  }
+  return result;
+}
