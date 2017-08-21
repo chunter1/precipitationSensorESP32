@@ -200,7 +200,7 @@ sub PrecipitationSensor_Set($@) {
   my $cmd = shift @a;
   my $arg = join(" ", @a);
 
-  my $list = "raw connect flash parse reboot treshold";
+  my $list = "raw connect flash parse reboot treshold calibrate savesettings";
   return $list if( $cmd eq '?' || $cmd eq '');
  
   if ($cmd eq "raw") {
@@ -228,6 +228,14 @@ sub PrecipitationSensor_Set($@) {
   } 
   elsif ($cmd eq "treshold") {
     PrecipitationSensor_SimpleWrite($hash, "treshold=$arg");
+  }
+  elsif ($cmd eq "calibrate") {
+    PrecipitationSensor_SimpleWrite($hash, "calibrate");
+    PrecipitationSensor_Connect($hash);
+  }
+  elsif ($cmd eq "savesettings") {
+    PrecipitationSensor_SimpleWrite($hash, "savesettings");
+    PrecipitationSensor_Connect($hash);
   }
   else {
     return "Unknown argument $cmd, choose one of ".$list;
@@ -510,6 +518,14 @@ sub PrecipitationSensor_Attr(@) {
 
     <li>reboot<br>
     Reboots the PrecipitationSensor. Works only if we are connected (state is opened or initialized)
+    </li><br>
+	
+	<li>calibrate<br>
+    Calibrates the threshold levels of the PrecipitationSensor. Works only if we are connected (state is opened or initialized)
+    </li><br>
+	
+	<li>savesettings<br>
+    Saves the changes to flash. Works only if we are connected (state is opened or initialized)
     </li><br>
 
     <li>flash<br>
