@@ -231,11 +231,9 @@ sub PrecipitationSensor_Set($@) {
   }
   elsif ($cmd eq "calibrate") {
     PrecipitationSensor_SimpleWrite($hash, "calibrate");
-    PrecipitationSensor_Connect($hash);
   }
   elsif ($cmd eq "savesettings") {
     PrecipitationSensor_SimpleWrite($hash, "savesettings");
-    PrecipitationSensor_Connect($hash);
   }
   else {
     return "Unknown argument $cmd, choose one of ".$list;
