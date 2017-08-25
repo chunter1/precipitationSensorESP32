@@ -361,10 +361,6 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += m_settings->GetBool("PubCompact", false) || hasNoConfiguration ? "checked" : "";
       data += F(">Compact&nbsp;&nbsp;&nbsp;");
 
-      data += F("<input name='PubBC' type='checkbox' value='true' ");
-      data += m_settings->GetBool("PubBC", false) ? "checked" : "";
-      data += F(">Bins count&nbsp;&nbsp;&nbsp;");
-
       data += F("<input name='PubBM' type='checkbox' value='true' ");
       data += m_settings->GetBool("PubBM", false) ? "checked" : "";
       data += F(">Bins mag&nbsp;&nbsp;&nbsp;");

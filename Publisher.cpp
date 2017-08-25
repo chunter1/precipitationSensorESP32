@@ -33,9 +33,8 @@ void Publisher::SendToDataPort() {
   payload += "snapshots=" + String(m_sensorData->snapshotCtr) + ",";
   payload += "ADCclipping=" + String(m_sensorData->clippingCtr) + ",";
   payload += "ADCpeak=" + String((100 * (m_sensorData->ADCpeakSample > 2048 ? 2048 : m_sensorData->ADCpeakSample)) / 2048) + ",";
-  payload += "detections=" + String(m_sensorData->totalDetectionsCtr) + ",";
   payload += "ADCoffset=" + String(m_sensorData->ADCoffset) + ",";
-  payload += "RBoverflows=" + String(m_sensorData->RBoverflowCtr) + ",";
+  payload += "RBoverflows=" + String(m_sensorData->RbOvCtr) + ",";
   payload += "MagPeak=" + String(m_sensorData->magPeak) + ",";
   payload += "MagAVG=" + String(m_sensorData->magAVG) + ",";
   payload += "MagAVGkorr=" + String(m_sensorData->magAVGkorr) + ",";
@@ -48,7 +47,6 @@ void Publisher::SendToDataPort() {
   String groupMagAVGkorrThresh;
 
   for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
-    groupDetections += String(m_sensorData->binGroup[i].detections) + " ";
     groupMagPeak += String(m_sensorData->binGroup[i].magPeak) + " ";
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + " ";
     groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + " ";
@@ -77,11 +75,6 @@ void Publisher::Publish(SensorData *sensorData) {
     m_dummySuffix = "";
     AddCommonReadings();
     AddCompactReadings();    
-  }
-  if (m_settings->GetBool("PubBC", false)) {
-    m_dummySuffix = "_BINS_COUNT";
-    AddCommonReadings();
-    AddBinsCountReadings();
   }
   if (m_settings->GetBool("PubBM", false)) {
     m_dummySuffix = "_BINS_MAG";
@@ -139,14 +132,12 @@ void Publisher::AddCommonReadings() {
   AddReading("snapshots", m_sensorData->snapshotCtr);
   AddReading("ADCclipping", m_sensorData->clippingCtr);
   AddReading("ADCpeak", (100 * (m_sensorData->ADCpeakSample > 2048 ? 2048 : m_sensorData->ADCpeakSample)) / 2048);
-  AddReading("detections", m_sensorData->totalDetectionsCtr);
   AddReading("ADCoffset", m_sensorData->ADCoffset);
-  AddReading("RBoverflows", m_sensorData->RBoverflowCtr);
+  AddReading("RBoverflows", m_sensorData->RbOvCtr);
   AddReading("MagPeak", m_sensorData->magPeak);
   AddReading("MagAVG", m_sensorData->magAVG);
   AddReading("MagAVGkorr", m_sensorData->magAVGkorr);
   AddReading("MagAVGkorrThresh", m_sensorData->magAVGkorrThresh);
-  AddReading("state", m_sensorData->totalDetectionsCtr);
 }
 
 void Publisher::AddCompactReadings() {
@@ -156,7 +147,6 @@ void Publisher::AddCompactReadings() {
   String groupMagAVGkorr;
   String groupMagAVGkorrThresh;
   for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
-    groupDetections += String(m_sensorData->binGroup[i].detections) + "%20";
     groupMagPeak += String(m_sensorData->binGroup[i].magPeak) + "%20";
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + "%20";
     groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + "%20";
@@ -167,40 +157,6 @@ void Publisher::AddCompactReadings() {
   AddReading("GroupMagAVG", groupMagAVG);
   AddReading("GroupMagAVGkorr", groupMagAVGkorr);
   AddReading("GroupMagAVGkorrThresh", groupMagAVGkorrThresh);
-}
-
-void Publisher::AddBinsCountReadings() {
-  char name[10];
-  
-  // find peak value for scaling
-  uint16_t countMax = 0;
-  for (uint16_t binNr = 1; binNr < m_settings->BaseData.NrOfBins; binNr++) {
-    if (m_sensorData->bin[binNr].detections > countMax) {
-      countMax = m_sensorData->bin[binNr].detections;
-    }
-  }
-  
-  // transfer occurrence counter and maximum value of each FFT-bin (except DC)
-  for (uint16_t binNr = 1; binNr < m_settings->BaseData.NrOfBins; binNr++) {
-    sprintf(name, "%03d", binNr);
-  
-    // The value of the reading
-    String value;
-    for (uint8_t x = 0; x < NR_OF_BARS; x++) {
-      if (countMax > 0) {
-        if (x < ((m_settings->BaseData.NrOfBins * m_sensorData->bin[binNr].detections) / countMax))
-          value += "|";
-        else
-          value += ".";
-      } else {
-        value += "X";
-      }
-    }
-  
-    value += "%20" + String(m_sensorData->bin[binNr].detections);
-        
-    AddReading(name, value);
-  }
 }
 
 void Publisher::AddBinsMagReadings() {
@@ -216,7 +172,7 @@ void Publisher::AddBinsMagReadings() {
     }
   }
   
-  // transfer occurrence counter and maximum value of each FFT-bin (except DC)
+  // transfer maximum value of each FFT-bin (except DC)
   for (uint16_t binNr = 1; binNr < m_settings->BaseData.NrOfBins; binNr++) {
     sprintf(name, "%03d", binNr);
   
@@ -234,7 +190,6 @@ void Publisher::AddBinsMagReadings() {
     }
   
     value += "%20" + String(m_sensorData->bin[binNr].magPeak);
-    value += "%20" + String(m_sensorData->bin[binNr].detections);
   
     AddReading(name, value);
   }
@@ -253,7 +208,7 @@ void Publisher::AddBinGroupsReadings() {
     }
   }
   
-  // transfer occurrence counter and maximum value of each FFT-bin (except DC)
+  // transfer maximum value of each FFT-bin (except DC)
   for (byte binGroupNr = 1; binGroupNr <  m_settings->BaseData.NrOfBinGroups; binGroupNr++) {
     sprintf(name, "%03d", binGroupNr);
     
@@ -266,11 +221,10 @@ void Publisher::AddBinGroupsReadings() {
     }
           
     value += "%20" + String(m_sensorData->binGroup[binGroupNr].magPeak);
-    value += "%20" + String(m_sensorData->binGroup[binGroupNr].detections);
     
     AddReading(name, value);
   }
-     
+
 }
 
 void Publisher::AddBinMagAVGReading() {

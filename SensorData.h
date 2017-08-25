@@ -4,23 +4,23 @@
 #include "Arduino.h"
 
 struct FFT_BIN {
-  //uint32_t threshold;
+  uint16_t mag;
   float threshold;
   uint32_t magSum;
   float magAVG;
   float magAVGkorr;
   float magAVGkorrThresh;
   uint16_t magPeak;
-  uint32_t detections;
 };
 
 struct FFT_BIN_GROUP {
+  uint8_t firstBin;  
+  uint8_t lastBin;
   uint32_t magSum;
   float magAVG;
   float magAVGkorr;
   float magAVGkorrThresh;
   uint16_t magPeak;
-  uint32_t detections;
 };
 
 class SensorData {
@@ -28,13 +28,12 @@ public:
   FFT_BIN_GROUP *binGroup = NULL;
   FFT_BIN *bin = NULL;
 
-  uint32_t totalDetectionsCtr;
   int32_t ADCoffset;
   float magAVG;
   float magAVGkorr;
   float magAVGkorrThresh;
   uint16_t magPeak;
-  uint32_t RBoverflowCtr;
+  uint32_t RbOvCtr;
   uint16_t ADCpeakSample;
   uint32_t snapshotCtr;
   uint8_t clippingCtr;

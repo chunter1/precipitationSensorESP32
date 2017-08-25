@@ -26,7 +26,7 @@
  * The recommended radar sensor moduls are the IPM-170 and RSM-1700 because of their
  * symmetric radiation pattern.
  * Mounted in the middle of a 1m long vertival tube facing upwards is the recommended setup.
- * The IPM-165 (or CDM-324, not yet tested) may be used instead, if direction independency
+ * The IPM-165 or CDM-324 may be used instead, if direction independency
  * does not matter.
  * However, to estimate the rain level, the tube setup with an IPM-170 or RSM-1700
  * is highly recommended. (rain level estimation is yet to be evaluated!)
@@ -91,7 +91,7 @@
  * -) ADCpeak is now limited to 0...100%.
  * 
  * Version v0.8 (31.07.2017)
- * -) Added function startCapture() and stopCapture()
+ * -) Added function StartCapture(() and StopCapture(()
  * -) Important calculation bugfix in snapshotAvailable()
  * 
  * Version v0.8.1 (05.08.2017)
@@ -108,8 +108,8 @@
  *
  * Version v0.9.0 (11.08.2017)
  * -) Added "AddBinMagAVGReading" to publish functions.
- * -) Added "binThresholdFactor_table[]" to individually adapt threshold for each bin dependign on preamp used
- * -) TODO: Fill binThresholdFactor_table[] with real values
+ * -) Added "binThreshFactorNormalized[]" to individually adapt threshold for each bin dependign on preamp used
+ * -) TODO: Fill binThreshFactorNormalized[] with real values
  * -) Added "magAVGkorr" and "magAVGkorrThresh" to each bin
  * -) Added "Bins MA", "Bins MAK", "Bins MAKT" and "Bins Thresh" publish functions to internal value debugging (DO NOT ACTIVATE MORE THAN ONE AT A TIME)
  * -) Added "magAVGkorrThresh" to binand group statistics
@@ -120,18 +120,20 @@
  * -) 8 decimals for GroupMagAVGkorrThresh
  * -) DataPort
  * -) FHEM module
- *
+ * 
+ * Version v0.10.0 (20.08.2017)
+ * -) !! removed all detection-count related parameters !! -> use magAVG... parameters from now on
+ * -) Statistics.ino converted to C++ class
+ * -) Added GlobalDefines.h
+ * -) process.ino and fft.ino and parts of precipitationSensor.ino combined in SigProc.cpp
+ * -) TODO: Permanently store calibration data
+ * 
  \***************************************************************************/
-
-// DO NOT USE! FOR DEVELOPMENT PURPOSE ONLY!
-// #define WIFI_OFF_DURING_MEASUREMENT
-
-#define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.9.1"
 
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
+#include "GlobalDefines.h"
 #include "StateManager.h"
 #include "Settings.h"
 #include "WebFrontend.h"
@@ -144,26 +146,9 @@
 #include "Publisher.h"
 #include "SensorData.h"
 #include "DataPort.h"
+#include "Statistics.h"
+#include "SigProc.h"
 
-#define DEFAULT_SSID                      "SSID"
-#define DEFAULT_PASSWORD                  "PASSWORD"
-#define DEFAULT_PUBLISH_INTERVAL          60
-#define DEFAULT_DETECTION_TRESHOLD        2.0
-                         
-#define FOV_m                             0.5                              // Average FOV size in meter
-
-#define ADC_PIN_NR                        34
-#define DEBUG_GPIO_ISR                    5
-#define DEBUG_GPIO_MAIN                   23
-
-#define RINGBUFFER_SIZE                   (NR_OF_FFT_SAMPLES << 2)
-
-#define NR_OF_FFT_SAMPLES_bit             9                                 // DO NOT MODIFY - Number of samples in [bits] e.g. 9 bits = 512 samples
-#define NR_OF_FFT_SAMPLES                 (1 << NR_OF_FFT_SAMPLES_bit)
-#define NR_OF_BINS                        (NR_OF_FFT_SAMPLES >> 1)
-#define NR_OF_BIN_GROUPS                  32
-
-hw_timer_t * timer = NULL;
 StateManager stateManager;
 Settings settings;
 WebFrontend frontend(80, &settings);
@@ -173,40 +158,17 @@ OTAUpdate ota;
 Publisher publisher;
 SensorData sensorData(NR_OF_BINS, NR_OF_BIN_GROUPS);
 DataPort dataPort;
+Statistics statistics;
+SigProc sigProc;
 
-volatile uint32_t samplePtrIn;
-volatile uint32_t samplePtrOut;
-volatile int16_t sampleRB[RINGBUFFER_SIZE];
-volatile uint32_t RBoverflow;
-
-uint publishInterval;
 float detectionThreshold;
-uint mountingAngle;
-uint8_t snapProcessed_flag;
-
-int16_t re[NR_OF_FFT_SAMPLES];
-int16_t im[NR_OF_FFT_SAMPLES];
-
-struct BIN_GROUP_BOUNDARIES {
-  uint8_t firstBin[NR_OF_BIN_GROUPS] = {
-    1, 8, 16, 24, 32, 40, 48, 56,
-    64, 72, 80, 88, 96, 104, 112, 120,
-    128, 136, 144, 152, 160, 168, 176, 184,
-    192, 200, 208, 216, 224, 232, 240, 248
-  };
-  uint8_t lastBin[NR_OF_BIN_GROUPS] = {
-    7,  15,  23,  31,  39,  47,  55,  63,
-    71,  79,  87,  95, 103, 111, 119, 127,
-    135, 143, 151, 159, 167, 175, 183, 191,
-    199, 207, 215, 223, 231, 239, 247, 255
-  };
-} binGroupBoundaries;
+//uint mountingAngle;
 
 /* The following table holds the normalized threshold factor for each FFT-BIN.
  * The values are based on a LME49720 preamp measured at room-temperature. 
  * TODO: automatically/dynamically generate values
  */
-const float binThresholdFactor_table[NR_OF_BINS] = {
+const float binThreshFactorNormalized[NR_OF_BINS] = {
 // normalized LME outdoor 2nd order bandpass (see FHEM forum schematic)
   1.0000, 10.8734, 19.2322, 19.1900, 15.5119, 12.0158, 11.9288, 13.4776,
   15.2058, 7.3113, 6.5752, 5.4960, 5.8813, 4.7282, 3.7916, 3.5066,
@@ -240,42 +202,6 @@ const float binThresholdFactor_table[NR_OF_BINS] = {
   2.5172, 1.7467, 2.2533, 1.8021, 2.3641, 2.4960, 2.3852, 1.9340,
   3.6174, 2.5383, 2.6069, 3.3958, 4.3536, 3.7045, 3.6834, 3.4749,
   7.0475, 5.8364, 4.7599, 5.1003, 6.1689, 11.3905, 10.8734, 3.6069
-
-// normalized LME indoor lowpass 3rd+4th order (for development purpose only)
-/*
-  1.0000, 1.6575, 1.3343, 1.3896, 1.2825, 1.1539, 1.3412, 1.2430,
-  1.4861, 1.2002, 1.2825, 1.2876, 1.3913, 1.3575, 1.2769, 1.2610,
-  1.7625, 1.3039, 1.3022, 1.3468, 1.4574, 1.3343, 1.3806, 1.2662,
-  1.6022, 1.1324, 1.2786, 1.0394, 1.2572, 1.1393, 1.3378, 1.2199,
-  2.0377, 1.3108, 1.3129, 1.1522, 1.2216, 1.0304, 1.3108, 1.2002,
-  1.5268, 1.1985, 1.4308, 1.2696, 1.3073, 1.2375, 1.2002, 1.2053,
-  1.7180, 1.1929, 1.1590, 1.1860, 1.3270, 1.2340, 1.3022, 1.2075,
-  1.3948, 1.1196, 1.2306, 1.0592, 1.2769, 1.0733, 1.1697, 1.1449,
-  2.3626, 1.1286, 1.1770, 1.1162, 1.2250, 1.0450, 1.1912, 1.0574,
-  1.3913, 1.1449, 1.2323, 1.2092, 1.2983, 1.1144, 1.1432, 1.1303,
-  1.5769, 1.1449, 1.1324, 1.1590, 1.3270, 1.2160, 1.3180, 1.2216,
-  1.4432, 1.1020, 1.2075, 1.0197, 1.1432, 1.1054, 1.2589, 1.1483,
-  1.9198, 1.1466, 1.2718, 1.0682, 1.1753, 1.0090, 1.2752, 1.0716,
-  1.4946, 1.1985, 1.2696, 1.2375, 1.3288, 1.2413, 1.1843, 1.1324,
-  1.6412, 1.1449, 1.1432, 1.2182, 1.3429, 1.2375, 1.2966, 1.1127,
-  1.2735, 1.0947, 1.2036, 1.0000, 1.1342, 1.0767, 1.1539, 1.2396,
-  2.9631, 1.2447, 1.1680, 1.1003, 1.1449, 1.0214, 1.1929, 1.0896,
-  1.3056, 1.1179, 1.2842, 1.2465, 1.3553, 1.2233, 1.1522, 1.1449,
-  1.6468, 1.1324, 1.1985, 1.2430, 1.3412, 1.2323, 1.2949, 1.1895,
-  1.5002, 1.1089, 1.2859, 1.0231, 1.1753, 1.0789, 1.2503, 1.1895,
-  1.9773, 1.1843, 1.2769, 1.1054, 1.1556, 1.0163, 1.2375, 1.1286,
-  1.4698, 1.2375, 1.3485, 1.2250, 1.3412, 1.1822, 1.1646, 1.1483,
-  1.5877, 1.1449, 1.1715, 1.1162, 1.3378, 1.2520, 1.2396, 1.1663,
-  1.4111, 1.0626, 1.2233, 1.0664, 1.2503, 1.1286, 1.2036, 1.1393,
-  2.4754, 1.1522, 1.1950, 1.1003, 1.2932, 1.0823, 1.2396, 1.1500,
-  1.4093, 1.2250, 1.3536, 1.2430, 1.3699, 1.2233, 1.1805, 1.2002,
-  1.7394, 1.2143, 1.2447, 1.2679, 1.3502, 1.3108, 1.4608, 1.2357,
-  1.5915, 1.2160, 1.3146, 1.0536, 1.2662, 1.1607, 1.3288, 1.3468,
-  2.1093, 1.2323, 1.3553, 1.1556, 1.2808, 1.0682, 1.3090, 1.1376,
-  1.6271, 1.3129, 1.4235, 1.3896, 1.5092, 1.3485, 1.3485, 1.3412,
-  1.8234, 1.3073, 1.2949, 1.3896, 1.4286, 1.3056, 1.3253, 1.2250,
-  1.5199, 1.2503, 1.3823, 1.1860, 1.3322, 1.3931, 1.3643, 1.6232
-*/
 };
 
 void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String staticIP, String staticMask, String staticGW, String hostName) {
@@ -371,7 +297,7 @@ static bool StartWifi(Settings *settings) {
   
   Serial.println("Starting OTA");
   ota.Begin(frontend.GetWebServer(), [] {
-    stopCapture();
+    sigProc.StopCapture();
   });
 
   if (settings->GetBool("UseDataPort", false)) {
@@ -382,104 +308,7 @@ static bool StartWifi(Settings *settings) {
   return result;
 }
 
-// *****************************************
-// *****************************************
-// *****************************************
-#ifdef WIFI_OFF_DURING_MEASUREMENT
-static bool RestartWifi(Settings *settings) {
-  bool result = false;
 
-  Serial.println("Restart WIFI_STA");
-
-  String hostName = settings->Get("HostName", "precipitationSensor");
-  Serial.print("HostName is: ");
-  Serial.println(hostName);
-  stateManager.SetHostname(hostName);
-
-  String staticIP = settings->Get("StaticIP", "");
-  String staticMask = settings->Get("StaticMask", "");
-  String staticGW = settings->Get("StaticGW", "");
-
-  if (staticIP.length() < 7 || staticMask.length() < 7) {
-    Serial.println("Using DHCP");
-  }
-  else {
-    Serial.println("Using static IP");
-    Serial.print("IP: ");
-    Serial.println(staticIP);
-    Serial.print("Mask: ");
-    Serial.println(staticMask);
-    Serial.print("Gateway: ");
-    Serial.println(staticGW);
-  }
-
-  TryConnectWIFI(settings->Get("ctSSID1", DEFAULT_SSID), settings->Get("ctPASS1", DEFAULT_PASSWORD), 1, settings->GetInt("ctTO1", 15), staticIP, staticMask, staticGW, hostName);
-  String ctSSID2 = settings->Get("ctSSID2", "---");
-  if (WiFi.status() != WL_CONNECTED && ctSSID2.length() > 0 && ctSSID2 != "---") {
-    TryConnectWIFI(ctSSID2, settings->Get("ctPASS2", "---"), 2, settings->GetInt("ctTO2", settings->GetInt("ctTO2", 15)), staticIP, staticMask, staticGW, hostName);
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    result = true;
-    Serial.println();
-    Serial.println("connected :-)");
-    Serial.print("SSID: ");
-    Serial.println(WiFi.SSID());
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP().toString());
-  }
-  else {
-    Serial.println();
-    Serial.println("We got no connection :-(");
-  }
-  
-  return result;
-}
-#endif
-
-// *****************************************
-// *****************************************
-// *****************************************
-void IRAM_ATTR onTimer()
-{
-  int16_t data;
-  uint32_t diff;
-
-  data = analogRead(ADC_PIN_NR);
-  
-  //digitalWrite(DEBUG_GPIO_ISR, HIGH);
-
-  sampleRB[samplePtrIn] = data - 2048;
-  samplePtrIn = (++samplePtrIn) & (RINGBUFFER_SIZE - 1);
-
-  if (samplePtrIn == samplePtrOut)
-    RBoverflow = 1;
-
-  //digitalWrite(DEBUG_GPIO_ISR, LOW);  
-}
-
-// *****************************************
-// *****************************************
-// *****************************************
-void startCapture()
-{
-  samplePtrIn = 0;
-  samplePtrOut = 0;
-  timerAlarmEnable(timer);
-  while (samplePtrIn < NR_OF_FFT_SAMPLES) {}
-}
-
-// *****************************************
-// *****************************************
-// *****************************************
-void stopCapture()
-{
-  timerAlarmDisable(timer);
-}
-
-// *****************************************
-// *****************************************
-// *****************************************
 void setup()
 {
   uint32_t startProcessTS;
@@ -499,15 +328,31 @@ void setup()
   settings.Read();
 
   // Get the measurement settings
-  publishInterval = settings.GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
   detectionThreshold = settings.GetFloat("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
-  mountingAngle = settings.GetUInt("SMA", 45);
+  //mountingAngle = settings.GetUInt("SMA", 45);
 
-  // Get the groups from the settings
+  // Get the group-boundaries from the settings
   for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
     byte groupSize = settings.BaseData.NrOfBins / settings.BaseData.NrOfBinGroups;
-    binGroupBoundaries.firstBin[nbr] = settings.GetUInt("BG" + String(nbr) + "F", nbr == 0 ? 1 : (nbr * groupSize));
-    binGroupBoundaries.lastBin[nbr]  = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
+    sensorData.binGroup[nbr].firstBin = settings.GetUInt("BG" + String(nbr) + "F", nbr == 0 ? 1 : (nbr * groupSize));
+    sensorData.binGroup[nbr].lastBin = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
+  }
+
+  for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
+/*    
+    float thresh;
+    String str;
+    
+    str = "TB" + String(binNr);
+    Serial.println(str);
+    
+    // Get the measurement settings
+    thresh = settings.GetFloat("TB" + String(binNr), DEFAULT_DETECTION_TRESHOLD);
+    Serial.printf("%f\n", thresh);
+
+    sensorData.bin[binNr].threshold = thresh * detectionThreshold;
+*/    
+    sensorData.bin[binNr].threshold = detectionThreshold * binThreshFactorNormalized[binNr];
   }
 
   stateManager.Begin(PROGVERS, PROGNAME);
@@ -517,58 +362,25 @@ void setup()
   pinMode(DEBUG_GPIO_ISR, OUTPUT);
   pinMode(DEBUG_GPIO_MAIN, OUTPUT);
 
-  analogSetAttenuation(ADC_6db);
-  analogSetWidth(12);
-  analogSetCycles(8);
-  analogSetSamples(1);
-  analogSetClockDiv(1);
-  adcAttachPin(ADC_PIN_NR);
-
-  timer = timerBegin(0, 868, true);
-  settings.SetTimer(timer);
-  timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 9, true);
-
   startProcessTS = millis() + (settings.GetUInt("StartupDelay", 5) * 1000);
   while (millis() < startProcessTS) {
     ota.Handle();
     watchdog.Handle();
   }
 
-  // Pre-calculate threshold for each bin individually
-  for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
-    sensorData.bin[binNr].threshold = detectionThreshold * binThresholdFactor_table[binNr];
-  }
-
   // Initialize the publisher
   publisher.Begin(&settings, &dataPort);
+
+  // Initialize signal processing
+  sigProc.Begin(&settings, &sensorData, &statistics, &publisher);
+
+  // Initialize statistics
+  statistics.Begin(&settings, &sensorData);
   
   // Go
-  startCapture();
+  sigProc.StartCapture();
 
   Serial.println("Setup done");
-}
-
-// *****************************************
-// *****************************************
-// *****************************************
-uint8_t snapshotAvailable()
-{
-  uint32_t samplePtrIn_tmp;
-  uint32_t diff;
-
-  samplePtrIn_tmp = samplePtrIn;
-
-  if (samplePtrIn_tmp > samplePtrOut)
-    diff = samplePtrIn_tmp - samplePtrOut;
-  else
-    diff = (samplePtrIn_tmp + RINGBUFFER_SIZE) - samplePtrOut;
-
-  // bufferPtrIn must be at least NR_OF_FFT_SAMPLES ahead
-  if (diff >= NR_OF_FFT_SAMPLES)
-    return 1;
-
-  return 0;
 }
 
 String CommandHandler(String command) {
@@ -591,21 +403,34 @@ String CommandHandler(String command) {
   else if (command.startsWith("reboot")) {
     ESP.restart();
   }
+  else if (command.startsWith("savesettings")) {
+    settings.Write();
+  }
+  else if (command.startsWith("calibrate")) {
+    statistics.Calibrate();
+    for (uint16_t binNr = 0; binNr < 10; binNr++) {
+      //settings.Add("TB" + String(binNr), sensorData.bin[binNr].threshold);
+      settings.Add("TB" + String(binNr), binNr);
+    }
+    //settings.Write();
+/*    
+    // report it to fhem
+    result = "treshold=" + String(detectionThreshold);
+    // to make it persistent, you would do a "set Radar218 savesettings" in FHEM after the "set Radar218 calibrate" if results with the new treshold are fine 
+*/    
+  }
 
   return result;
 }
 
-// *****************************************
-// *****************************************
-// *****************************************
-void loop()
-{
+void loop() {
   stateManager.SetLoopStart();
 
   ota.Handle();
   frontend.Handle();
   accessPoint.Handle();
   watchdog.Handle();
+
   if(dataPort.IsEnabled()) {
     dataPort.Handle(CommandHandler);
   }
@@ -614,63 +439,7 @@ void loop()
     ota.Handle();
   }
 
-  while (snapshotAvailable())
-  {
-    //digitalWrite(DEBUG_GPIO_MAIN, HIGH);
-
-    processSamples(samplePtrOut);
-    samplePtrOut = (samplePtrOut + (NR_OF_FFT_SAMPLES >> 1)) & (RINGBUFFER_SIZE - 1);
-
-    // check if no ringbuffer overflow occurred before or during sample processing
-    if (!RBoverflow)
-    {
-      updateStatistics();
-      sensorData.snapshotCtr++;
-
-      if (sensorData.snapshotCtr >= (40 * publishInterval))                  // 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
-      {
-#ifdef WIFI_OFF_DURING_MEASUREMENT
-        stopCapture();
-        Serial.println("\nmeasurement stopped - WIFI ON");
-#endif
-
-        finalizeStatistics();
-
-#ifdef WIFI_OFF_DURING_MEASUREMENT
-        if (RestartWifi(&settings) == true) {
-          publisher.Publish(&sensorData);
-        }
-#else
-        publisher.Publish(&sensorData);        
-#endif
-
-        // FOR DEBUG PURPOSE ONLY
-        /*
-        stopCapture();
-        consoleOut_samples(0, 40);
-        startCapture(); 
-        */
-
-        resetStatistics();
-        
-        sensorData.RBoverflowCtr = 0;
-        sensorData.snapshotCtr = 0;
-
-#ifdef WIFI_OFF_DURING_MEASUREMENT
-        delay(1000);
-        WiFi.mode(WIFI_OFF);
-        Serial.println("WIFI off - measurement restarted");
-        startCapture(); 
-#endif
-      }
-    } else {
-      Serial.println("RINGBUFFER OVERFLOW!");
-      sensorData.RBoverflowCtr++;
-      RBoverflow = 0;
-    }
-
-    //digitalWrite(DEBUG_GPIO_MAIN, LOW);    
-  }
+  sigProc.Handle();
 
   stateManager.SetLoopEnd();
 } 
