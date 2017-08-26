@@ -7,6 +7,8 @@
 
 #define BUFFER_SIZE 1024
 
+typedef void CriticalActionCallbackType(bool);
+
 class Settings {
 public:
   struct ItemPosition {
@@ -20,6 +22,8 @@ public:
   } BaseData;
 
   Settings();
+
+  void Begin(CriticalActionCallbackType *criticalActionCallback);
  
   void Read();
   String Write();
@@ -42,12 +46,11 @@ public:
   void FromString(String settings);
   void Clear();
 
-  void SetTimer(hw_timer_t *timer);
 
 private:
   String m_data;
   static bool m_debug;
-  hw_timer_t *m_timer;
+  CriticalActionCallbackType *m_criticalActionCallback;
   
   ItemPosition GetItemPosition(String key);
   String GetRaw(String key);

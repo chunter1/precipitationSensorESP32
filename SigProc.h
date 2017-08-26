@@ -15,6 +15,7 @@ public:
   void StartCapture();
   void StopCapture();
   void Calc();
+  bool IsCapturing();
 
 private:
   Settings *m_settings;
@@ -27,6 +28,7 @@ private:
   static volatile uint32_t samplePtrOut;
   static volatile uint32_t RbOvFlag;
   uint publishInterval;
+  bool m_isCapturing;
 
   static void IRAM_ATTR onTimer();
   uint8_t SnapPending();

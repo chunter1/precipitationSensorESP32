@@ -252,6 +252,7 @@ void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *stat
   m_settings = settings;
   m_statistics = statistics;
   m_publisher = publisher;
+  m_isCapturing = false;
 
   publishInterval = m_settings->GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
 
@@ -265,7 +266,6 @@ void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *stat
 
   // Initialize timer for ADC
   timer = timerBegin(0, 868, true);
-  m_settings->SetTimer(timer);
   timerAttachInterrupt(timer, &SigProc::onTimer, true);
   timerAlarmWrite(timer, 9, true);
 }
@@ -328,12 +328,18 @@ void SigProc::Handle()
 void SigProc::StartCapture() {
   samplePtrIn = 0;
   samplePtrOut = 0;
-  timerAlarmEnable(timer);
+  if (timer) {
+    timerAlarmEnable(timer);
+  }
   while (samplePtrIn < NR_OF_FFT_SAMPLES) {}
+  m_isCapturing = true;
 }
 
 void SigProc::StopCapture() {
-  timerAlarmDisable(timer);
+  if (timer) {
+    timerAlarmDisable(timer);
+  }
+  m_isCapturing = false;
 }
 
 uint8_t SigProc::SnapPending() {
@@ -406,6 +412,10 @@ void SigProc::Calc()
   }
 
   samplePtrOut = (samplePtrOut + (NR_OF_FFT_SAMPLES >> 1)) & (RINGBUFFER_SIZE - 1);
+}
+
+bool SigProc::IsCapturing() {
+  return m_isCapturing;
 }
 
 inline int16_t SigProc::MAS(int16_t a, int16_t b) {

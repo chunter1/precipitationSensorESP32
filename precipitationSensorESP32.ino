@@ -160,6 +160,7 @@ SensorData sensorData(NR_OF_BINS, NR_OF_BIN_GROUPS);
 DataPort dataPort;
 Statistics statistics;
 SigProc sigProc;
+bool wasCapturing;
 
 float detectionThreshold;
 //uint mountingAngle;
@@ -309,8 +310,7 @@ static bool StartWifi(Settings *settings) {
 }
 
 
-void setup()
-{
+void setup() {
   uint32_t startProcessTS;
   
   Serial.begin(115200);
@@ -323,6 +323,17 @@ void setup()
   watchdog.Begin(32, 1);
 
   // Get the settings
+  settings.Begin([](bool isCritical) {
+    wasCapturing = sigProc.IsCapturing();
+    if (isCritical) {
+      sigProc.StopCapture();
+    }
+    else {
+      if (wasCapturing) {
+        sigProc.StartCapture();
+      }
+    }
+  });
   settings.BaseData.NrOfBins = NR_OF_BINS;
   settings.BaseData.NrOfBinGroups = NR_OF_BIN_GROUPS;
   settings.Read();
@@ -408,10 +419,10 @@ String CommandHandler(String command) {
   }
   else if (command.startsWith("calibrate")) {
     statistics.Calibrate();
-    for (uint16_t binNr = 0; binNr < 10; binNr++) {
-      //settings.Add("TB" + String(binNr), sensorData.bin[binNr].threshold);
-      settings.Add("TB" + String(binNr), binNr);
-    }
+    ////for (uint16_t binNr = 0; binNr < 10; binNr++) {
+    ////  //settings.Add("TB" + String(binNr), sensorData.bin[binNr].threshold);
+    ////  settings.Add("TB" + String(binNr), binNr);
+    ////}
     //settings.Write();
 /*    
     // report it to fhem

@@ -7,8 +7,8 @@ Settings::Settings() {
   Clear();
 }
 
-void Settings::SetTimer(hw_timer_t *timer) {
-  m_timer = timer;
+void Settings::Begin(CriticalActionCallbackType *criticalActionCallback) {
+  m_criticalActionCallback = criticalActionCallback;
 }
 
 void Settings::Clear() {
@@ -129,8 +129,8 @@ void Settings::FromString(String settings) {
 }
 
 void Settings::Read() {
-  if (m_timer) {
-    timerAlarmDisable(m_timer);
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(true);
   }
   nvs_flash_init();
   nvs_handle handle;
@@ -149,16 +149,16 @@ void Settings::Read() {
   
   nvs_close(handle);
 
-  if (m_timer) {
-    timerAlarmEnable(m_timer);
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(false);
   }
 }
 
 String Settings::Write() {
   String result;
 
-  if (m_timer) {
-    timerAlarmDisable(m_timer);
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(true);
   }
 
   nvs_handle handle;
@@ -172,8 +172,8 @@ String Settings::Write() {
   result += BUFFER_SIZE;
   result += ")";
 
-  if (m_timer) {
-    timerAlarmEnable(m_timer);
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(false);
   }
   
   return result;
