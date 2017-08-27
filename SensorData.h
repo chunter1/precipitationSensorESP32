@@ -14,6 +14,7 @@ struct FFT_BIN {
 };
 
 struct FFT_BIN_GROUP {
+  float threshold;
   uint8_t firstBin;  
   uint8_t lastBin;
   uint32_t magSum;
