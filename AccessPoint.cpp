@@ -6,12 +6,14 @@ AccessPoint::AccessPoint(IPAddress ip, IPAddress gateway, IPAddress subnet, Stri
   m_gateway = gateway;
   m_subnet = subnet;
   m_ssidPrefix = ssidPrefix;
+  m_running = false;
 }
 
 void AccessPoint::Begin(int autoClose) {
   Serial.println("Starting access point ...");
-
-  WiFi.mode(WIFI_STA);
+  
+  WiFi.enableSTA(false);
+  WiFi.enableAP(true);
   String ssid = m_ssidPrefix + "-" + Tools::GetChipId();
   WiFi.softAPConfig(m_ip, m_ip, m_subnet);
   WiFi.softAP(ssid.c_str());
@@ -26,7 +28,7 @@ void AccessPoint::End() {
   Serial.println("Closing  access point");
   m_running = false;
   m_autoClose = 0;
-  WiFi.mode(WIFI_MODE_STA);
+  WiFi.enableAP(false);
   }
 
 void AccessPoint::Handle() {
@@ -35,4 +37,8 @@ void AccessPoint::Handle() {
       End();
     }
   } 
+}
+
+bool AccessPoint::IsRunning() {
+  return m_running;
 }

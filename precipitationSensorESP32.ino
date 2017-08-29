@@ -128,6 +128,12 @@
  * -) process.ino and fft.ino and parts of precipitationSensor.ino combined in SigProc.cpp
  * -) TODO: Permanently store calibration data
  * 
+ * Version v0.10.1 (28.08.2017)
+ * -) Added ConnectionKeeper  (still not perfect) 
+ * -) AP fixes
+ * -) Moved watchdog to GPIO27
+ * -) Added ADC pin configuration
+ *
  \***************************************************************************/
 
 #include <WiFi.h>
@@ -148,6 +154,7 @@
 #include "DataPort.h"
 #include "Statistics.h"
 #include "SigProc.h"
+#include "ConnectionKeeper.h"
 
 StateManager stateManager;
 Settings settings;
@@ -160,9 +167,12 @@ SensorData sensorData(NR_OF_BINS, NR_OF_BIN_GROUPS);
 DataPort dataPort;
 Statistics statistics;
 SigProc sigProc;
+ConnectionKeeper connectionKeeper;
+
 bool wasCapturing;
 
 float detectionThreshold;
+byte adcPin;
 //uint mountingAngle;
 
 /* The following table holds the normalized threshold factor for each FFT-BIN.
@@ -209,7 +219,12 @@ void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String
   if (ctSSID.length() > 0 && ctSSID != "---") {
     unsigned long startMillis = millis();
 
+    WiFi.disconnect(true);
     WiFi.begin(ctSSID.c_str(), ctPass.c_str());
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoConnect(false);
+    WiFi.setAutoReconnect(false);
+
     if (staticIP.length() > 7 && staticMask.length() > 7) {
       if (staticGW.length() < 7) {
         WiFi.config(Tools::IPAddressFromString(staticIP), Tools::IPAddressFromString(staticGW), (uint32_t)0);
@@ -309,6 +324,17 @@ static bool StartWifi(Settings *settings) {
   return result;
 }
 
+void HandleCriticalAction(bool isCritical) {
+  wasCapturing = sigProc.IsCapturing();
+  if (isCritical) {
+    sigProc.StopCapture();
+  }
+  else {
+    if (wasCapturing) {
+      sigProc.StartCapture();
+    }
+  }
+}
 
 void setup() {
   uint32_t startProcessTS;
@@ -320,19 +346,11 @@ void setup() {
   Serial.println("Chip ID: " + Tools::GetChipId());
   Serial.println("Chip Revision: " + Tools::GetChipRevision());
 
-  watchdog.Begin(32, 1);
+  watchdog.Begin(27, 1);
 
   // Get the settings
   settings.Begin([](bool isCritical) {
-    wasCapturing = sigProc.IsCapturing();
-    if (isCritical) {
-      sigProc.StopCapture();
-    }
-    else {
-      if (wasCapturing) {
-        sigProc.StartCapture();
-      }
-    }
+    HandleCriticalAction(isCritical);
   });
   settings.BaseData.NrOfBins = NR_OF_BINS;
   settings.BaseData.NrOfBinGroups = NR_OF_BIN_GROUPS;
@@ -369,6 +387,9 @@ void setup() {
   stateManager.Begin(PROGVERS, PROGNAME);
 
   StartWifi(&settings);
+  connectionKeeper.Begin([](bool isCritical) {
+    HandleCriticalAction(isCritical);
+  });
 
   pinMode(DEBUG_GPIO_ISR, OUTPUT);
   pinMode(DEBUG_GPIO_MAIN, OUTPUT);
@@ -436,21 +457,25 @@ String CommandHandler(String command) {
 
 void loop() {
   stateManager.SetLoopStart();
-
-  ota.Handle();
-  frontend.Handle();
-  accessPoint.Handle();
+  
   watchdog.Handle();
 
-  if(dataPort.IsEnabled()) {
-    dataPort.Handle(CommandHandler);
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
+  if (connectionKeeper.IsConnected()) {
     ota.Handle();
+    if (dataPort.IsEnabled()) {
+      dataPort.Handle(CommandHandler);
+    }
   }
 
-  sigProc.Handle();
+  if (accessPoint.IsRunning()) {
+    accessPoint.Handle();
+  }
+  else {
+    sigProc.Handle();
+    connectionKeeper.Handle();
+  }
 
+  frontend.Handle();
+  
   stateManager.SetLoopEnd();
 } 

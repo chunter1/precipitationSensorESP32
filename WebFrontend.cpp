@@ -93,6 +93,23 @@ String WebFrontend::GetBinGroupRow(byte nbr) {
   return result;
 }
 
+String GetOption(String option, String defaultValue) {
+  String result = "";
+
+  result += F("<option value='");
+  result += option;
+  if (defaultValue == option) {
+    result += F("' selected>");
+  }
+  else {
+    result += F("'>");
+  }
+  result += option;
+  result += F("</option>");
+
+  return result;
+}
+
 
 void WebFrontend::Begin(StateManager *stateManager) {
   m_stateManager = stateManager;
@@ -339,6 +356,20 @@ void WebFrontend::Begin(StateManager *stateManager) {
 
       // Measurement settings
       data += F("<tr><td></td><td><br>Measurement options</td></tr>");
+      data += F("<tr><td> <label>ADC Pin:</label></td><td>");
+      data += F("<select name='ADCPIN' style='width:50px'>");
+      String value = m_settings->Get("ADCPIN", "33");
+      data += GetOption("32", value);
+      data += GetOption("33", value);
+      data += GetOption("34", value);
+      data += GetOption("35", value);
+      data += GetOption("36", value);
+      data += GetOption("37", value);
+      data += GetOption("38", value);
+      data += GetOption("39", value);
+      data += F("</select>&nbsp;&nbsp;");
+
+
       data += F("<tr><td> <label>Mounting angle: </label></td><td><input name='SMA' size='5' maxlength='3' Value='");
       data += m_settings->Get("SMA", "45");
       data += F("'><label>&nbsp;degree&nbsp;(0 is facing upward)</td></tr>");

@@ -21,13 +21,13 @@ bool DataPort::IsEnabled() {
 }
 
 void DataPort::AddPayload(String payload) {
-  if (m_enabled && m_queue.Count() <= 10) {
+  if (m_enabled && m_queue.Count() < 3) {
     m_queue.Push(payload);
   }
 }
 
 void DataPort::Dispatch(String data) {
-  if (m_enabled) {
+  if (m_enabled && WiFi.status() == WL_CONNECTED) {
     for (byte i = 0; i < m_clients.size(); i++) {
       m_clients[i].println(data);
     }
@@ -37,7 +37,7 @@ void DataPort::Dispatch(String data) {
 bool DataPort::Handle(CommandCallbackType* commandCallback) {
   bool result = false;
 
-  if (m_enabled) {
+  if (m_enabled && WiFi.status() == WL_CONNECTED) {
     if (m_server.hasClient()) {
       WiFiClient client = m_server.available();
       client.setNoDelay(true);

@@ -23,6 +23,7 @@ private:
   Statistics *m_statistics;  
   Publisher *m_publisher;
   hw_timer_t *timer = NULL;
+  static volatile byte m_adcPin;
   static volatile int16_t sampleRb[RINGBUFFER_SIZE];
   static volatile uint32_t samplePtrIn;
   static volatile uint32_t samplePtrOut;

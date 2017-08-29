@@ -11,6 +11,7 @@ volatile int16_t SigProc::sampleRb[RINGBUFFER_SIZE];
 volatile uint32_t SigProc::samplePtrIn;
 volatile uint32_t SigProc::samplePtrOut;
 volatile uint32_t SigProc::RbOvFlag;
+volatile byte SigProc::m_adcPin;
 
 const int16_t COS_3WAVE4_TABLE[N_WAVETABLE - N_WAVETABLE_QUARTER] = {
   32767,  32766,  32764,  32761,  32757,  32751,  32744,  32736,
@@ -253,6 +254,7 @@ void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *stat
   m_statistics = statistics;
   m_publisher = publisher;
   m_isCapturing = false;
+  m_adcPin = m_settings->GetByte("ADCPIN", 33);
 
   publishInterval = m_settings->GetUInt("PublishInterval", DEFAULT_PUBLISH_INTERVAL);
 
@@ -262,7 +264,7 @@ void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *stat
   analogSetCycles(8);
   analogSetSamples(1);
   analogSetClockDiv(1);
-  adcAttachPin(ADC_PIN_NR);
+  adcAttachPin(m_adcPin);
 
   // Initialize timer for ADC
   timer = timerBegin(0, 868, true);
@@ -275,7 +277,7 @@ void IRAM_ATTR SigProc::onTimer()
   int16_t data;
   uint32_t diff;
 
-  data = analogRead(ADC_PIN_NR);
+  data = analogRead(m_adcPin);
 
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 

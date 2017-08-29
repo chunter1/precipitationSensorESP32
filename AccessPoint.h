@@ -19,6 +19,7 @@ class AccessPoint {
    void Begin(int autoClose = 0);
    void End();
    void Handle();
+   bool IsRunning();
 
 };
 

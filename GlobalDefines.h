@@ -2,14 +2,13 @@
 #define __GLOBALDEFINES__h
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.10.0"
+#define PROGVERS                         "0.10.1"
 
 #define DEFAULT_SSID                      "SSID"
 #define DEFAULT_PASSWORD                  "PASSWORD"
 #define DEFAULT_PUBLISH_INTERVAL          60
 #define DEFAULT_DETECTION_TRESHOLD        2.0
                          
-#define ADC_PIN_NR                        34
 #define DEBUG_GPIO_ISR                    5
 #define DEBUG_GPIO_MAIN                   23
 

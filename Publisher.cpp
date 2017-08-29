@@ -7,7 +7,7 @@ void Publisher::Begin(Settings *settings, DataPort *dataPort) {
 }
 
 void Publisher::Transmit() {
-  if (m_nbrOfReadings) {
+  if (m_nbrOfReadings && WiFi.status() == WL_CONNECTED) {
     WiFiClient client;
 
     String ip = m_settings->Get("fhemIP", "192.168.1.100");
