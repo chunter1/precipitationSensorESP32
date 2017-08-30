@@ -414,6 +414,18 @@ sub PrecipitationSensor_Connect($;$) {
 }
 
 #=======================================================================================
+sub PrecipitationSensor_StartConnectTimer($) {
+  my ($hash) = @_;
+  my $name = $hash->{NAME};
+  
+  my $interval = AttrVal($name, "timeout", undef);
+  if(defined($interval)) {
+    InternalTimer(gettimeofday() + $interval / 2, "PrecipitationSensor_OnConnectTimer", $hash, 0);
+  }
+  
+}
+
+#=======================================================================================
 sub PrecipitationSensor_OnConnectTimer($) {
   my ($hash) = @_;
   my $name = $hash->{NAME};
@@ -422,7 +434,7 @@ sub PrecipitationSensor_OnConnectTimer($) {
 
   my $interval = AttrVal($name, "timeout", undef);
   if(defined($interval)) {
-    InternalTimer(gettimeofday() + $interval, "PrecipitationSensor_OnConnectTimer", $hash, 0);
+    PrecipitationSensor_StartConnectTimer($hash);
 
     if(AttrVal($name, "disable", "0") != "1" && !defined($hash->{helper}{FLASHING})) {
       my ($date, $time, $year, $month, $day, $hour, $min, $sec, $timestamp, $alive);
@@ -455,7 +467,7 @@ sub PrecipitationSensor_Attr(@) {
     RemoveInternalTimer($hash, "PrecipitationSensor_OnConnectTimer");
     if($aVal) {
       PrecipitationSensor_SimpleWrite($hash, "alive");
-      InternalTimer(gettimeofday()+$aVal, "PrecipitationSensor_OnConnectTimer", $hash, 0);
+      PrecipitationSensor_StartConnectTimer($hash);
     }
   }
   elsif ($aName eq "disable") {
@@ -466,7 +478,8 @@ sub PrecipitationSensor_Attr(@) {
     else {
       if($hash->{READINGS}{state}{VAL} eq "disabled") {
         readingsSingleUpdate($hash, "state", "disconnected", 1);
-        InternalTimer(gettimeofday()+1, "PrecipitationSensor_Connect", $hash, 0);
+        PrecipitationSensor_Connect($hash, 1);
+        PrecipitationSensor_StartConnectTimer($hash);
       }
     }
   }
