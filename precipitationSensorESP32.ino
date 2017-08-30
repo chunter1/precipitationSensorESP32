@@ -169,8 +169,6 @@ Statistics statistics;
 SigProc sigProc;
 ConnectionKeeper connectionKeeper;
 
-bool wasCapturing;
-
 float detectionThreshold;
 byte adcPin;
 //uint mountingAngle;
@@ -325,14 +323,11 @@ static bool StartWifi(Settings *settings) {
 }
 
 void HandleCriticalAction(bool isCritical) {
-  wasCapturing = sigProc.IsCapturing();
   if (isCritical) {
     sigProc.StopCapture();
   }
   else {
-    if (wasCapturing) {
-      sigProc.StartCapture();
-    }
+    sigProc.StartCapture();
   }
 }
 
@@ -347,7 +342,6 @@ void setup() {
   Serial.println("Chip Revision: " + Tools::GetChipRevision());
 
   watchdog.Begin(27, 1);
-
   // Get the settings
   settings.Begin([](bool isCritical) {
     HandleCriticalAction(isCritical);

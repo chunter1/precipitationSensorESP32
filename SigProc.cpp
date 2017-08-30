@@ -332,9 +332,9 @@ void SigProc::StartCapture() {
   samplePtrOut = 0;
   if (timer) {
     timerAlarmEnable(timer);
-  }
-  while (samplePtrIn < NR_OF_FFT_SAMPLES) {}
-  m_isCapturing = true;
+    while (samplePtrIn < NR_OF_FFT_SAMPLES) {}
+    m_isCapturing = true;
+  } 
 }
 
 void SigProc::StopCapture() {
