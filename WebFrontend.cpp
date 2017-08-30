@@ -368,15 +368,13 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += GetOption("38", value);
       data += GetOption("39", value);
       data += F("</select>&nbsp;&nbsp;");
-
-
       data += F("<tr><td> <label>Mounting angle: </label></td><td><input name='SMA' size='5' maxlength='3' Value='");
       data += m_settings->Get("SMA", "45");
       data += F("'><label>&nbsp;degree&nbsp;(0 is facing upward)</td></tr>");
       data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
-      data += F("'><label>&nbsp;&nbsp;Detection threshold: </label><input name='DetectionThreshold' size='10' maxlength='5' Value='");
-      data += m_settings->Get("DetectionThreshold", "30");
+      data += F("'><label>&nbsp;&nbsp;Threshold factor: </label><input name='DetectionThreshold' size='10' maxlength='5' Value='");
+      data += m_settings->Get("DetectionThreshold", "1");
       data += F("'></td></tr>");
 
       // Data port
