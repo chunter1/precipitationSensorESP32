@@ -4,6 +4,7 @@
 #include "Arduino.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+#include "SensorData.h"
 
 #define BUFFER_SIZE 1024
 
@@ -45,6 +46,9 @@ public:
   String ToString();
   void FromString(String settings);
   void Clear();
+  
+  void SaveCalibration(SensorData *data);
+  void LoadCalibration(SensorData *data);
 
 
 private:

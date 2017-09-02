@@ -46,6 +46,12 @@
  * ===========================
  * ESP32 CPU clock speed: 80 MHz
  * 
+ * Pins used:
+ * ==========
+ * 32 ... 39 Senor (ADC) (one of them, defined on the setup page)
+ * 27        Watchdog
+ * 25        TMP36
+ *
  * Version history:
  * ================
  * Version v0.1 (16.07.2017)
@@ -378,6 +384,9 @@ void setup() {
     sensorData.bin[binNr].threshold = detectionThreshold * binThreshFactorNormalized[binNr];
   }
 
+  // TODO: chunter1 calibration
+  ////settings.LoadCalibration(&sensorData);
+
   stateManager.Begin(PROGVERS, PROGNAME);
 
   StartWifi(&settings);
@@ -434,16 +443,15 @@ String CommandHandler(String command) {
   }
   else if (command.startsWith("calibrate")) {
     statistics.Calibrate();
-    ////for (uint16_t binNr = 0; binNr < 10; binNr++) {
-    ////  //settings.Add("TB" + String(binNr), sensorData.bin[binNr].threshold);
-    ////  settings.Add("TB" + String(binNr), binNr);
-    ////}
-    //settings.Write();
-/*    
-    // report it to fhem
-    result = "treshold=" + String(detectionThreshold);
-    // to make it persistent, you would do a "set Radar218 savesettings" in FHEM after the "set Radar218 calibrate" if results with the new treshold are fine 
-*/    
+
+    // TODO: chunter1 calibration - remove
+    for (float i = 0; i < settings.BaseData.NrOfBinGroups; i++) {
+      Serial.println(sensorData.binGroup[(byte)i].threshold, 4);
+    }
+
+    // TODO: chunter1 calibration - enable
+    //// settings.SaveCalibration(&sensorData);
+ 
   }
 
   return result;

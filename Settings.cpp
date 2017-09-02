@@ -9,6 +9,7 @@ Settings::Settings() {
 
 void Settings::Begin(CriticalActionCallbackType *criticalActionCallback) {
   m_criticalActionCallback = criticalActionCallback;
+  nvs_flash_init();
 }
 
 void Settings::Clear() {
@@ -132,7 +133,6 @@ void Settings::Read() {
   if (m_criticalActionCallback) {
     m_criticalActionCallback(true);
   }
-  nvs_flash_init();
   nvs_handle handle;
   nvs_open("Settings", nvs_open_mode::NVS_READONLY, &handle);
   
@@ -214,3 +214,54 @@ byte Settings::GetByte(String key, byte defaultValue) {
 float Settings::GetFloat(String key, float defaultValue) {
   return Get(key, String(defaultValue)).toFloat();
 }
+
+void Settings::SaveCalibration(SensorData *data) {
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(true);
+  }
+
+  nvs_handle handle;
+  nvs_open("Cal", nvs_open_mode::NVS_READWRITE, &handle);
+  
+  for (byte binGroupNr = 0; binGroupNr < BaseData.NrOfBinGroups; binGroupNr++) {
+    String key = "BGC" + String(binGroupNr);
+    String value = String(data->binGroup[binGroupNr].threshold, 4);
+    nvs_set_str(handle, key.c_str(), value.c_str());
+    nvs_commit(handle);
+  }
+  
+  nvs_close(handle);  
+
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(false);
+  }
+}
+
+void Settings::LoadCalibration(SensorData *data) {
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(true);
+  }
+  
+  nvs_handle handle;
+  nvs_open("Cal", nvs_open_mode::NVS_READONLY, &handle);
+
+  for (byte binGroupNr = 0; binGroupNr < BaseData.NrOfBinGroups; binGroupNr++) {
+    char *str = new char[12];
+    size_t strl = 12;
+    String key = "BGC" + String(binGroupNr);
+    esp_err_t error = nvs_get_str(handle, key.c_str(), str, &strl);
+    float value = 1.0;
+    if (error == ESP_OK) {
+      value = String(str).toFloat();
+    }
+    delete str;
+  }
+
+  nvs_close(handle);
+
+  if (m_criticalActionCallback) {
+    m_criticalActionCallback(false);
+  }
+}
+
+
