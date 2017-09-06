@@ -569,12 +569,12 @@ void SigProc::DebugConsoleOutBins(uint16_t startIdx, uint16_t stopIdx) {
   for (uint16_t binNr = startIdx; binNr <= stopIdx; binNr++) {
     Serial.printf("BIN %03d ", binNr);
     for (uint8_t x = 0; x < BARS; x++) {
-      if (x < ((m_sensorData->bin[binNr].magPeak * BARS) / 16383))
+      if (x < ((m_sensorData->bin[binNr].magMax * BARS) / 16383))
         Serial.printf("#");
       else
         Serial.printf("-");
     }
-    Serial.printf(" %d\n", m_sensorData->bin[binNr].magPeak);
+    Serial.printf(" %d\n", m_sensorData->bin[binNr].magMax);
   }
 }
 

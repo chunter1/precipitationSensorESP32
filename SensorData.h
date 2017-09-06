@@ -5,12 +5,11 @@
 
 struct FFT_BIN {
   uint16_t mag;
-  float threshold;
   uint32_t magSum;
   float magAVG;
   float magAVGkorr;
   float magAVGkorrThresh;
-  uint16_t magPeak;
+  uint16_t magMax;
 };
 
 struct FFT_BIN_GROUP {
@@ -21,7 +20,7 @@ struct FFT_BIN_GROUP {
   float magAVG;
   float magAVGkorr;
   float magAVGkorrThresh;
-  uint16_t magPeak;
+  uint16_t magMax;
 };
 
 class SensorData {
@@ -33,7 +32,7 @@ public:
   float magAVG;
   float magAVGkorr;
   float magAVGkorrThresh;
-  uint16_t magPeak;
+  uint16_t magMax;
   uint32_t RbOvCtr;
   uint16_t ADCpeakSample;
   uint32_t snapshotCtr;

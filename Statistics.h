@@ -9,7 +9,7 @@
 class Statistics {
 public:
   void Begin(Settings *settings, SensorData *sensorData);
-  float Calibrate();
+  void Calibrate();
   void Calc();
   void Finalize();
   void Reset();
@@ -17,8 +17,7 @@ public:
 private:
   SensorData *m_sensorData;
   Settings *m_settings;
-  float detectionThreshold;
+  float thresholdFactor;
 };
-
 
 #endif

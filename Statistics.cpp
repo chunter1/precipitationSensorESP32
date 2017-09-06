@@ -54,48 +54,43 @@ const float magAVGkorrThresholds_table[NR_OF_BIN_GROUPS] = {
 void Statistics::Begin(Settings *settings, SensorData *sensorData) {
   m_settings = settings;
   m_sensorData = sensorData;
-  detectionThreshold = m_settings->GetFloat("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
+  thresholdFactor = m_settings->GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
 
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
-    m_sensorData->binGroup[binGroupNr].threshold = magAVGkorrThresholds_table[binGroupNr] * detectionThreshold;
+    m_sensorData->binGroup[binGroupNr].threshold = magAVGkorrThresholds_table[binGroupNr] * thresholdFactor;
   }
 
   Reset();
 }
 
-float Statistics::Calibrate()
+void Statistics::Calibrate()
 {
   float magAVGkorrMin = ~0;
   
 //  m_sigProc->StopCapture();
 
-  // Find minimum magAVGkorr value
+  // Search minimum magAVGkorr value
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
-    if (m_sensorData->binGroup[binGroupNr].magAVGkorr < magAVGkorrMin) {
+    if ((m_sensorData->binGroup[binGroupNr].magAVGkorr < magAVGkorrMin) && (m_sensorData->binGroup[binGroupNr].magAVGkorr > 0)) {
       magAVGkorrMin = m_sensorData->binGroup[binGroupNr].magAVGkorr;
     }
   }
 
-  if (magAVGkorrMin == 0)
-    magAVGkorrMin = 1;
-
   // Calculate normalized threshold-factors and update thresholds
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
-    m_sensorData->binGroup[binGroupNr].threshold = m_sensorData->binGroup[binGroupNr].magAVGkorr / magAVGkorrMin;     // TODO: reboot is needed or values need to be multiplied with detectionThreshold to be valid!
-    //Serial.printf("%f ", m_sensorData->binGroup[binGroupNr].threshold);
+    //m_sensorData->binGroup[binGroupNr].threshold = (m_sensorData->binGroup[binGroupNr].magAVGkorr / magAVGkorrMin) * thresholdFactor;
+    m_sensorData->binGroup[binGroupNr].threshold = binGroupNr;  //m_sensorData->binGroup[binGroupNr].magAVGkorr;
   }
 
 //  ->StartCapture();
-
-  return 1.0;   // TODO: replace "default" threshold factor?
 }
 
 void Statistics::Calc()
 {
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++)
   {
-    if (m_sensorData->bin[binNr].mag > m_sensorData->bin[binNr].magPeak) {
-      m_sensorData->bin[binNr].magPeak = m_sensorData->bin[binNr].mag;
+    if (m_sensorData->bin[binNr].mag > m_sensorData->bin[binNr].magMax) {
+      m_sensorData->bin[binNr].magMax = m_sensorData->bin[binNr].mag;
     }
     m_sensorData->bin[binNr].magSum += m_sensorData->bin[binNr].mag;
   }
@@ -111,7 +106,7 @@ void Statistics::Finalize()
   m_sensorData->magAVG = 0;
   m_sensorData->magAVGkorr = 0;
   m_sensorData->magAVGkorrThresh = 0;
-  m_sensorData->magPeak = 0;
+  m_sensorData->magMax = 0;
   
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
     m_sensorData->bin[binNr].magAVG = (float)m_sensorData->bin[binNr].magSum /m_sensorData->snapshotCtr;
@@ -121,8 +116,8 @@ void Statistics::Finalize()
       m_sensorData->magAVG += m_sensorData->bin[binNr].magSum;
       m_sensorData->magAVGkorr += m_sensorData->bin[binNr].magSum / dropInFOVsnapshots_table[binNr];
       
-      if (m_sensorData->bin[binNr].magPeak > m_sensorData->magPeak) {
-        m_sensorData->magPeak = m_sensorData->bin[binNr].magPeak;
+      if (m_sensorData->bin[binNr].magMax > m_sensorData->magMax) {
+        m_sensorData->magMax = m_sensorData->bin[binNr].magMax;
       }
     }
   }
@@ -135,15 +130,15 @@ void Statistics::Finalize()
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
     magSumGroup = 0;
     magSumGroupKorr = 0;
-    m_sensorData->binGroup[binGroupNr].magPeak = 0;
+    m_sensorData->binGroup[binGroupNr].magMax = 0;
    
     // scan through all bins within the group
     for (uint16_t binNr = m_sensorData->binGroup[binGroupNr].firstBin; binNr <= m_sensorData->binGroup[binGroupNr].lastBin; binNr++) {
       magSumGroup += m_sensorData->bin[binNr].magSum;
       magSumGroupKorr += ((float)m_sensorData->bin[binNr].magSum / dropInFOVsnapshots_table[binNr]);
 
-      if (m_sensorData->bin[binNr].magPeak > m_sensorData->binGroup[binGroupNr].magPeak) {
-        m_sensorData->binGroup[binGroupNr].magPeak = m_sensorData->bin[binNr].magPeak;
+      if (m_sensorData->bin[binNr].magMax > m_sensorData->binGroup[binGroupNr].magMax) {
+        m_sensorData->binGroup[binGroupNr].magMax = m_sensorData->bin[binNr].magMax;
       }
     }
 
@@ -165,7 +160,7 @@ void Statistics::Reset()
     m_sensorData->bin[binNr].magAVG = 0;
     m_sensorData->bin[binNr].magAVGkorr = 0;
     m_sensorData->bin[binNr].magAVGkorrThresh = 0;
-    m_sensorData->bin[binNr].magPeak = 0;
+    m_sensorData->bin[binNr].magMax = 0;
   }
   
   // group-level statistics
@@ -174,13 +169,13 @@ void Statistics::Reset()
     m_sensorData->binGroup[binGroupNr].magAVG = 0;
     m_sensorData->binGroup[binGroupNr].magAVGkorr = 0;
     m_sensorData->binGroup[binGroupNr].magAVGkorrThresh = 0;
-    m_sensorData->binGroup[binGroupNr].magPeak = 0;
+    m_sensorData->binGroup[binGroupNr].magMax = 0;
   }
 
   m_sensorData->magAVG = 0;
   m_sensorData->magAVGkorr = 0;
   m_sensorData->magAVGkorrThresh = 0;
-  m_sensorData->magPeak = 0;
+  m_sensorData->magMax = 0;
   m_sensorData->ADCpeakSample = 0;
   m_sensorData->clippingCtr = 0;
 }

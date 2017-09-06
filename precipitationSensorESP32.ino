@@ -23,9 +23,8 @@
  * This project uses an radar sensor modul a preamp and an ESP32 to classify the type
  * of precipitation/hydrometeors by measuring the speed/doppler frequency.
  * 
- * The recommended radar sensor moduls are the IPM-170 and RSM-1700 because of their
+ * The recommended radar sensor modules are the IPM-170 and RSM-1700 because of their
  * symmetric radiation pattern.
- * Mounted in the middle of a 1m long vertival tube facing upwards is the recommended setup.
  * The IPM-165 or CDM-324 may be used instead, if direction independency
  * does not matter.
  * However, to estimate the rain level, the tube setup with an IPM-170 or RSM-1700
@@ -91,49 +90,9 @@ Statistics statistics;
 SigProc sigProc;
 ConnectionKeeper connectionKeeper;
 
-float detectionThreshold;
+float thresholdFactor;
 byte adcPin;
 //uint mountingAngle;
-
-/* The following table holds the normalized threshold factor for each FFT-BIN.
- * The values are based on a LME49720 preamp measured at room-temperature. 
- * TODO: automatically/dynamically generate values
- */
-const float binThreshFactorNormalized[NR_OF_BINS] = {
-// normalized LME outdoor 2nd order bandpass (see FHEM forum schematic)
-  1.0000, 10.8734, 19.2322, 19.1900, 15.5119, 12.0158, 11.9288, 13.4776,
-  15.2058, 7.3113, 6.5752, 5.4960, 5.8813, 4.7282, 3.7916, 3.5066,
-  4.8813, 2.7361, 3.2005, 3.5409, 3.0897, 1.9446, 2.4617, 1.9446,
-  2.7493, 2.0237, 1.9024, 1.4063, 2.0343, 1.9235, 2.9129, 1.6491,
-  4.2005, 1.4301, 2.4723, 1.8470, 1.8681, 1.2084, 1.7256, 1.5937,
-  2.2216, 1.4723, 1.6702, 1.3958, 1.6042, 1.5620, 1.1768, 1.2744,
-  2.0897, 1.0554, 1.5066, 1.5620, 1.8153, 1.5277, 1.7599, 1.3193,
-  2.3404, 1.5831, 1.6280, 1.3747, 1.5620, 2.3298, 2.4301, 1.2216,
-  4.3193, 1.2533, 2.4195, 2.5277, 1.7045, 1.3852, 1.5937, 1.2427,
-  2.1003, 1.1108, 1.6280, 1.4195, 1.6939, 1.4617, 1.2533, 1.0000,
-  1.7704, 1.1108, 1.1873, 1.4195, 1.3509, 1.1214, 1.1979, 1.1214,
-  1.7704, 1.3087, 1.4512, 1.0765, 1.4406, 1.5383, 1.8786, 1.0897,
-  2.8259, 1.1768, 2.0554, 1.4063, 1.3404, 1.0237, 1.2639, 1.1873,
-  1.8918, 1.2982, 1.4512, 1.2982, 1.9024, 1.6174, 1.6491, 1.2639,
-  2.2744, 1.2427, 1.7045, 1.9446, 2.5172, 2.1003, 2.1003, 1.8364,
-  3.8707, 3.0026, 2.4512, 2.5620, 3.3087, 5.6728, 5.5963, 1.8470,
-  6.9367, 1.8259, 5.4855, 5.7071, 3.3087, 2.5726, 2.4960, 2.9894,
-  3.8918, 1.7916, 2.1214, 2.1003, 2.5277, 1.9578, 1.6807, 1.2427,
-  2.2533, 1.2216, 1.6491, 1.6280, 1.9024, 1.2982, 1.4512, 1.2982,
-  1.9129, 1.1873, 1.2639, 1.0237, 1.3193, 1.4063, 2.0554, 1.1768,
-  2.7810, 1.0897, 1.8786, 1.5383, 1.4195, 1.0765, 1.4512, 1.2850,
-  1.7467, 1.1214, 1.1979, 1.1214, 1.3509, 1.4195, 1.2084, 1.0897,
-  1.7467, 1.0000, 1.2533, 1.4617, 1.6939, 1.4195, 1.6042, 1.1108,
-  2.1003, 1.2427, 1.5726, 1.3852, 1.6939, 2.4512, 2.3852, 1.2533,
-  4.2216, 1.2216, 2.3852, 2.3087, 1.5488, 1.3193, 1.6280, 1.5620,
-  2.2982, 1.2322, 1.7599, 1.5066, 1.8153, 1.5620, 1.4828, 1.0449,
-  2.0897, 1.2533, 1.1319, 1.5620, 1.5488, 1.3747, 1.6702, 1.4301,
-  2.1662, 1.5726, 1.7150, 1.2084, 1.7810, 1.8021, 2.3852, 1.3509,
-  3.8259, 1.5620, 2.7493, 1.8786, 1.9446, 1.3298, 1.8153, 1.7467,
-  2.5172, 1.7467, 2.2533, 1.8021, 2.3641, 2.4960, 2.3852, 1.9340,
-  3.6174, 2.5383, 2.6069, 3.3958, 4.3536, 3.7045, 3.6834, 3.4749,
-  7.0475, 5.8364, 4.7599, 5.1003, 6.1689, 11.3905, 10.8734, 3.6069
-};
 
 void TryConnectWIFI(String ctSSID, String ctPass, byte nbr, uint timeout, String staticIP, String staticMask, String staticGW, String hostName) {
   if (ctSSID.length() > 0 && ctSSID != "---") {
@@ -273,7 +232,7 @@ void setup() {
   settings.Read();
 
   // Get the measurement settings
-  detectionThreshold = settings.GetFloat("DetectionThreshold", DEFAULT_DETECTION_TRESHOLD);
+  thresholdFactor = settings.GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
   //mountingAngle = settings.GetUInt("SMA", 45);
 
   // Get the group-boundaries from the settings
@@ -283,25 +242,7 @@ void setup() {
     sensorData.binGroup[nbr].lastBin = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
   }
 
-  for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
-/*    
-    float thresh;
-    String str;
-    
-    str = "TB" + String(binNr);
-    Serial.println(str);
-    
-    // Get the measurement settings
-    thresh = settings.GetFloat("TB" + String(binNr), DEFAULT_DETECTION_TRESHOLD);
-    Serial.printf("%f\n", thresh);
-
-    sensorData.bin[binNr].threshold = thresh * detectionThreshold;
-*/    
-    sensorData.bin[binNr].threshold = detectionThreshold * binThreshFactorNormalized[binNr];
-  }
-
-  // TODO: chunter1 calibration
-  ////settings.LoadCalibration(&sensorData);
+  settings.LoadCalibration(&sensorData);
 
   stateManager.Begin(PROGVERS, PROGNAME);
 
@@ -341,9 +282,9 @@ String CommandHandler(String command) {
     result = "alive";
   }
   else if (command.startsWith("treshold=")) {
-    detectionThreshold = command.substring(9).toFloat();
-    settings.Add("DetectionThreshold", detectionThreshold);
-    Serial.println(detectionThreshold);
+    thresholdFactor = command.substring(9).toFloat();
+    settings.Add("ThresholdFactor", thresholdFactor);
+    Serial.println(thresholdFactor);
   }
   else if (command.startsWith("version")) {
     result = "version=" + String(PROGVERS);
@@ -359,15 +300,7 @@ String CommandHandler(String command) {
   }
   else if (command.startsWith("calibrate")) {
     statistics.Calibrate();
-
-    // TODO: chunter1 calibration - remove
-    for (float i = 0; i < settings.BaseData.NrOfBinGroups; i++) {
-      Serial.println(sensorData.binGroup[(byte)i].threshold, 4);
-    }
-
-    // TODO: chunter1 calibration - enable
-    //// settings.SaveCalibration(&sensorData);
- 
+    settings.SaveCalibration(&sensorData);
   }
 
   return result;
