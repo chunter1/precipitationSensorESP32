@@ -79,7 +79,7 @@ void Statistics::Calibrate()
   // Calculate normalized threshold-factors and update thresholds
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
     //m_sensorData->binGroup[binGroupNr].threshold = (m_sensorData->binGroup[binGroupNr].magAVGkorr / magAVGkorrMin) * thresholdFactor;
-    m_sensorData->binGroup[binGroupNr].threshold = binGroupNr;  //m_sensorData->binGroup[binGroupNr].magAVGkorr;
+    m_sensorData->binGroup[binGroupNr].threshold = 5.1234 + binGroupNr;  //m_sensorData->binGroup[binGroupNr].magAVGkorr;
   }
 
 //  ->StartCapture();

@@ -254,6 +254,7 @@ void Settings::LoadCalibration(SensorData *data) {
     if (error == ESP_OK) {
       value = String(str).toFloat();
     }
+    data->binGroup[binGroupNr].threshold = String(str).toFloat();
     delete str;
   }
 

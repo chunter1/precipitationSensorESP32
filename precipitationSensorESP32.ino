@@ -243,6 +243,13 @@ void setup() {
   }
 
   settings.LoadCalibration(&sensorData);
+  //// Test
+  Serial.println("Cal: ");
+  for (byte i = 0; i < NR_OF_BIN_GROUPS; i++) {
+    Serial.print(String(sensorData.binGroup[i].threshold, 4) + " ");
+  }
+  Serial.println();
+
 
   stateManager.Begin(PROGVERS, PROGNAME);
 
