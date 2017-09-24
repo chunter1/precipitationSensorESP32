@@ -17,7 +17,10 @@ public:
 private:
   SensorData *m_sensorData;
   Settings *m_settings;
-  float thresholdFactor;
+  float threshold;
+
+  void filterMagMaxGroup();
+  float noiseDebiasing(float scaleStart, float scaleStop, float scaleStep);
 };
 
 #endif

@@ -24,23 +24,15 @@
  * of precipitation/hydrometeors by measuring the speed/doppler frequency.
  * 
  * The recommended radar sensor modules are the IPM-170 and RSM-1700 because of their
- * symmetric radiation pattern.
- * The IPM-165 or CDM-324 may be used instead, if direction independency
- * does not matter.
- * However, to estimate the rain level, the tube setup with an IPM-170 or RSM-1700
- * is highly recommended. (rain level estimation is yet to be evaluated!)
+ * radial symmetric radiation pattern.
+ * The IPM-165 or CDM-324 may be used instead, if direction independency does not matter.
  *
- * Using a 0° tilted radar sensor with the following FFT settings, the hydrometeor speed
- * can be resolved in 0,12 m/s steps within a speed-range of 0,12...31,61 m/s.
- * Using a 45° tilted radar sensor, the hydrometeor speed can be resolved in 0,18 m/s steps
- * within a speed-range of 0,18...47,71 m/s.
- * 
- * ADC sampling rate:     10240 sps
+ * ADC sampling rate:     40960 sps (2x oversampling)
  * Sampling period:       50 ms
- * FFT points/samples:    512
+ * FFT points/samples:    1024
  * FFT resolution:        20 Hz
- * FFT frequency range:   DC...5100 Hz
- *
+ * FFT frequency range:   DC...10220 Hz
+ * 
  * Arduino IDE board settings:
  * ===========================
  * ESP32 CPU clock speed: 80 MHz
@@ -90,7 +82,7 @@ Statistics statistics;
 SigProc sigProc;
 ConnectionKeeper connectionKeeper;
 
-float thresholdFactor;
+float threshold;
 byte adcPin;
 //uint mountingAngle;
 
@@ -232,7 +224,7 @@ void setup() {
   settings.Read();
 
   // Get the measurement settings
-  thresholdFactor = settings.GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
+  threshold = settings.GetFloat("Threshold", DEFAULT_THRESHOLD);
   //mountingAngle = settings.GetUInt("SMA", 45);
 
   // Get the group-boundaries from the settings
@@ -244,9 +236,9 @@ void setup() {
 
   settings.LoadCalibration(&sensorData);
   //// Test
-  Serial.println("Cal: ");
+  Serial.println("Ref: ");
   for (byte i = 0; i < NR_OF_BIN_GROUPS; i++) {
-    Serial.print(String(sensorData.binGroup[i].threshold, 4) + " ");
+    Serial.print(String(sensorData.binGroup[i].magThresh, 4) + " ");
   }
   Serial.println();
 
@@ -289,9 +281,9 @@ String CommandHandler(String command) {
     result = "alive";
   }
   else if (command.startsWith("treshold=")) {
-    thresholdFactor = command.substring(9).toFloat();
-    settings.Add("ThresholdFactor", thresholdFactor);
-    Serial.println(thresholdFactor);
+    threshold = command.substring(9).toFloat();
+    settings.Add("Threshold", threshold);
+    Serial.println(threshold);
   }
   else if (command.startsWith("version")) {
     result = "version=" + String(PROGVERS);

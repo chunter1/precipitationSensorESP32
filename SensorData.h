@@ -8,18 +8,16 @@ struct FFT_BIN {
   uint32_t magSum;
   float magAVG;
   float magAVGkorr;
-  float magAVGkorrThresh;
   uint16_t magMax;
 };
 
 struct FFT_BIN_GROUP {
-  float threshold;
   uint8_t firstBin;  
   uint8_t lastBin;
-  uint32_t magSum;
   float magAVG;
+  float magThresh;
   float magAVGkorr;
-  float magAVGkorrThresh;
+  float magAVGkorrDom;
   uint16_t magMax;
 };
 
@@ -31,12 +29,12 @@ public:
   int32_t ADCoffset;
   float magAVG;
   float magAVGkorr;
-  float magAVGkorrThresh;
   uint16_t magMax;
   uint32_t RbOvCtr;
   uint16_t ADCpeakSample;
   uint32_t snapshotCtr;
   uint8_t clippingCtr;
+  uint8_t dominantGroup;
 
 
   SensorData(uint nrOfBins, byte nrOfBinGroups);

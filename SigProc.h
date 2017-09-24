@@ -36,7 +36,7 @@ private:
   inline int16_t MAS(int16_t a, int16_t b);
   void HannWindow(int16_t *re, uint8_t m);
   void FFT(int16_t *fr, int16_t *fi, uint16_t m);
-
+  
   void DebugConsoleOutBins(uint16_t startIdx, uint16_t stopIdx);
   void DebugConsoleOutSamples(uint16_t startIdx, uint16_t stopIdx);
 };

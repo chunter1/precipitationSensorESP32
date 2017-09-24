@@ -14,46 +14,46 @@ volatile uint32_t SigProc::RbOvFlag;
 volatile byte SigProc::m_adcPin;
 
 const int16_t COS_3WAVE4_TABLE[N_WAVETABLE - N_WAVETABLE_QUARTER] = {
-  32767,  32766,  32764,  32761,  32757,  32751,  32744,  32736,
-  32727,  32717,  32705,  32692,  32678,  32662,  32646,  32628,
-  32609,  32588,  32567,  32544,  32520,  32495,  32468,  32441,
-  32412,  32382,  32350,  32318,  32284,  32249,  32213,  32176,
-  32137,  32097,  32056,  32014,  31970,  31926,  31880,  31833,
-  31785,  31735,  31684,  31633,  31580,  31525,  31470,  31413,
-  31356,  31297,  31236,  31175,  31113,  31049,  30984,  30918,
-  30851,  30783,  30713,  30643,  30571,  30498,  30424,  30349,
-  30272,  30195,  30116,  30036,  29955,  29873,  29790,  29706,
-  29621,  29534,  29446,  29358,  29268,  29177,  29085,  28992,
-  28897,  28802,  28706,  28608,  28510,  28410,  28309,  28208,
-  28105,  28001,  27896,  27790,  27683,  27575,  27466,  27355,
-  27244,  27132,  27019,  26905,  26789,  26673,  26556,  26437,
-  26318,  26198,  26077,  25954,  25831,  25707,  25582,  25456,
-  25329,  25201,  25072,  24942,  24811,  24679,  24546,  24413,
-  24278,  24143,  24006,  23869,  23731,  23592,  23452,  23311,
-  23169,  23027,  22883,  22739,  22594,  22448,  22301,  22153,
-  22004,  21855,  21705,  21554,  21402,  21249,  21096,  20942,
-  20787,  20631,  20474,  20317,  20159,  20000,  19840,  19680,
-  19519,  19357,  19194,  19031,  18867,  18702,  18537,  18371,
-  18204,  18036,  17868,  17699,  17530,  17360,  17189,  17017,
-  16845,  16672,  16499,  16325,  16150,  15975,  15799,  15623,
-  15446,  15268,  15090,  14911,  14732,  14552,  14372,  14191,
-  14009,  13827,  13645,  13462,  13278,  13094,  12909,  12724,
-  12539,  12353,  12166,  11980,  11792,  11604,  11416,  11227,
-  11038,  10849,  10659,  10469,  10278,  10087,   9895,   9703,
-   9511,   9319,   9126,   8932,   8739,   8545,   8351,   8156,
-   7961,   7766,   7571,   7375,   7179,   6982,   6786,   6589,
-   6392,   6195,   5997,   5799,   5601,   5403,   5205,   5006,
-   4807,   4608,   4409,   4210,   4011,   3811,   3611,   3411,
-   3211,   3011,   2811,   2610,   2410,   2209,   2009,   1808,
-   1607,   1406,   1206,   1005,    804,    603,    402,    201,
+  32767, 32766, 32764, 32761, 32757, 32751, 32744, 32736,
+  32727, 32717, 32705, 32692, 32678, 32662, 32646, 32628,
+  32609, 32588, 32567, 32544, 32520, 32495, 32468, 32441,
+  32412, 32382, 32350, 32318, 32284, 32249, 32213, 32176,
+  32137, 32097, 32056, 32014, 31970, 31926, 31880, 31833,
+  31785, 31735, 31684, 31633, 31580, 31525, 31470, 31413,
+  31356, 31297, 31236, 31175, 31113, 31049, 30984, 30918,
+  30851, 30783, 30713, 30643, 30571, 30498, 30424, 30349,
+  30272, 30195, 30116, 30036, 29955, 29873, 29790, 29706,
+  29621, 29534, 29446, 29358, 29268, 29177, 29085, 28992,
+  28897, 28802, 28706, 28608, 28510, 28410, 28309, 28208,
+  28105, 28001, 27896, 27790, 27683, 27575, 27466, 27355,
+  27244, 27132, 27019, 26905, 26789, 26673, 26556, 26437,
+  26318, 26198, 26077, 25954, 25831, 25707, 25582, 25456,
+  25329, 25201, 25072, 24942, 24811, 24679, 24546, 24413,
+  24278, 24143, 24006, 23869, 23731, 23592, 23452, 23311,
+  23169, 23027, 22883, 22739, 22594, 22448, 22301, 22153,
+  22004, 21855, 21705, 21554, 21402, 21249, 21096, 20942,
+  20787, 20631, 20474, 20317, 20159, 20000, 19840, 19680,
+  19519, 19357, 19194, 19031, 18867, 18702, 18537, 18371,
+  18204, 18036, 17868, 17699, 17530, 17360, 17189, 17017,
+  16845, 16672, 16499, 16325, 16150, 15975, 15799, 15623,
+  15446, 15268, 15090, 14911, 14732, 14552, 14372, 14191,
+  14009, 13827, 13645, 13462, 13278, 13094, 12909, 12724,
+  12539, 12353, 12166, 11980, 11792, 11604, 11416, 11227,
+  11038, 10849, 10659, 10469, 10278, 10087, 9895, 9703,
+ 9511, 9319, 9126, 8932, 8739, 8545, 8351, 8156,
+ 7961, 7766, 7571, 7375, 7179, 6982, 6786, 6589,
+ 6392, 6195, 5997, 5799, 5601, 5403, 5205, 5006,
+ 4807, 4608, 4409, 4210, 4011, 3811, 3611, 3411,
+ 3211, 3011, 2811, 2610, 2410, 2209, 2009, 1808,
+ 1607, 1406, 1206, 1005, 804, 603, 402, 201,
    
-      0,   -200,   -401,   -602,   -803,  -1004,  -1205,  -1405,
-  -1606,  -1807,  -2008,  -2208,  -2409,  -2609,  -2810,  -3010,
-  -3210,  -3410,  -3610,  -3810,  -4010,  -4209,  -4408,  -4607,
-  -4806,  -5005,  -5204,  -5402,  -5600,  -5798,  -5996,  -6194,
-  -6391,  -6588,  -6785,  -6981,  -7178,  -7374,  -7570,  -7765,
-  -7960,  -8155,  -8350,  -8544,  -8738,  -8931,  -9125,  -9318,
-  -9510,  -9702,  -9894, -10086, -10277, -10468, -10658, -10848,
+ 0, -200, -401, -602, -803, -1004, -1205, -1405,
+ -1606, -1807, -2008, -2208, -2409, -2609, -2810, -3010,
+ -3210, -3410, -3610, -3810, -4010, -4209, -4408, -4607,
+ -4806, -5005, -5204, -5402, -5600, -5798, -5996, -6194,
+ -6391, -6588, -6785, -6981, -7178, -7374, -7570, -7765,
+ -7960, -8155, -8350, -8544, -8738, -8931, -9125, -9318,
+ -9510, -9702, -9894, -10086, -10277, -10468, -10658, -10848,
  -11037, -11226, -11415, -11603, -11791, -11979, -12165, -12352,
  -12538, -12723, -12908, -13093, -13277, -13461, -13644, -13826,
  -14008, -14190, -14371, -14551, -14731, -14910, -15089, -15267,
@@ -105,13 +105,13 @@ const int16_t COS_3WAVE4_TABLE[N_WAVETABLE - N_WAVETABLE_QUARTER] = {
  -15445, -15267, -15089, -14910, -14731, -14551, -14371, -14190,
  -14008, -13826, -13644, -13461, -13277, -13093, -12908, -12723,
  -12538, -12352, -12165, -11979, -11791, -11603, -11415, -11226,
- -11037, -10848, -10658, -10468, -10277, -10086,  -9894,  -9702,
- -9510,   -9318,  -9125,  -8931,  -8738,  -8544,  -8350,  -8155,
- -7960,   -7765,  -7570,  -7374,  -7178,  -6981,  -6785,  -6588,
- -6391,   -6194,  -5996,  -5798,  -5600,  -5402,  -5204,  -5005,
- -4806,   -4607,  -4408,  -4209,  -4010,  -3810,  -3610,  -3410,
- -3210,   -3010,  -2810,  -2609,  -2409,  -2208,  -2008,  -1807,
- -1606,   -1405,  -1205,  -1004,   -803,   -602,   -401,   -200
+ -11037, -10848, -10658, -10468, -10277, -10086, -9894, -9702,
+ -9510, -9318, -9125, -8931, -8738, -8544, -8350, -8155,
+ -7960, -7765, -7570, -7374, -7178, -6981, -6785, -6588,
+ -6391, -6194, -5996, -5798, -5600, -5402, -5204, -5005,
+ -4806, -4607, -4408, -4209, -4010, -3810, -3610, -3410,
+ -3210, -3010, -2810, -2609, -2409, -2208, -2008, -1807,
+ -1606, -1405, -1205, -1004, -803, -602, -401, -200
 };
 
 const uint16_t HANN_WINDOW_TABLE[N_WAVETABLE] = {
@@ -266,26 +266,30 @@ void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *stat
   analogSetClockDiv(1);
   adcAttachPin(m_adcPin);
 
-  // Initialize timer for ADC
-  timer = timerBegin(0, 868, true);
+  // Initialize the sampling timer
+  timer = timerBegin(0, 79994880 / SAMPLE_RATE, true);
+  timerAlarmWrite(timer, 1, true);
   timerAttachInterrupt(timer, &SigProc::onTimer, true);
-  timerAlarmWrite(timer, 9, true);
 }
 
 void IRAM_ATTR SigProc::onTimer()
 {
-  int16_t data;
-  uint32_t diff;
-
-  data = analogRead(m_adcPin);
+  static uint8_t osCtr = 0;
+  static int16_t dataSum = 0;
 
   //digitalWrite(DEBUG_GPIO_ISR, HIGH);
 
-  sampleRb[samplePtrIn] = data - 2048;
-  samplePtrIn = (++samplePtrIn) & (RINGBUFFER_SIZE - 1);
-
-  if (samplePtrIn == samplePtrOut)
-    RbOvFlag = 1;
+  dataSum += analogRead(m_adcPin) - 2048;     // approx. 10 us
+  
+  if (++osCtr >= (1 << OVERSAMPLING)) {
+    sampleRb[samplePtrIn] = dataSum;
+    samplePtrIn = (++samplePtrIn) & (RINGBUFFER_SIZE - 1);    
+    if (samplePtrIn == samplePtrOut) {
+      RbOvFlag = 1;
+    }
+    dataSum = 0;
+    osCtr = 0;
+  }
 
   //digitalWrite(DEBUG_GPIO_ISR, LOW);
 }
@@ -302,23 +306,24 @@ void SigProc::Handle()
       m_statistics->Calc();
       m_sensorData->snapshotCtr++;
 
-      // 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
-      if (m_sensorData->snapshotCtr >= (40 * publishInterval)) {
+      // 25 ms snapshot interval --> 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
+      if (m_sensorData->snapshotCtr >= ((80 >> OVERSAMPLING) * publishInterval)) {
         m_statistics->Finalize();
         m_publisher->Publish(m_sensorData);
-/*        
+/*
         // FOR DEBUG PURPOSE ONLY
         StopCapture();
         //DebugConsoleOutSamples(0, 40);
-        DebugConsoleOutBins(0, 40);
+        DebugConsoleOutBins(0, 7);
+        DebugConsoleOutBins(120, 127);
+        DebugConsoleOutBins(248, 255);
+        DebugConsoleOutBins(376, 383);
+        DebugConsoleOutBins(504, 511);
         StartCapture();
 */
         m_statistics->Reset();
-        m_sensorData->RbOvCtr = 0;
-        m_sensorData->snapshotCtr = 0;
       }
     } else {
-      Serial.println("RINGBUFFER OVERFLOW!");
       m_sensorData->RbOvCtr++;
       RbOvFlag = 0;
     }
@@ -366,11 +371,13 @@ uint8_t SigProc::SnapPending() {
 
 void SigProc::Calc()
 {
-  int16_t sample;
-  uint16_t sampleABS;
   uint16_t lastSampleIdx;
   uint16_t RBidx;
+  int16_t sample;
+  int16_t sample_noOs;
   int32_t sampleSUM;
+  int16_t offset;
+  uint16_t sampleABS;
   int16_t re[NR_OF_FFT_SAMPLES];
   int16_t im[NR_OF_FFT_SAMPLES];
 
@@ -383,26 +390,29 @@ void SigProc::Calc()
   for (uint16_t i = 0; i < NR_OF_FFT_SAMPLES; i++) {
     RBidx = (samplePtrOut + i) & (RINGBUFFER_SIZE - 1);
     sampleSUM += sampleRb[RBidx];
-  }
-  m_sensorData->ADCoffset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
-
+  }  
+  offset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
+  m_sensorData->ADCoffset = offset >> OVERSAMPLING;
+  
   // process each sample
   for (uint16_t i = 0; i < NR_OF_FFT_SAMPLES; i++) {
     RBidx = (samplePtrOut + i) & (RINGBUFFER_SIZE - 1);
     sample = sampleRb[RBidx];
 
-    if ((sample <= -2048) || (sample >= 2047)) {
+    sample_noOs = sample >> OVERSAMPLING;
+
+    if ((sample_noOs <= -2048) || (sample_noOs >= 2047)) {
       m_sensorData->clippingCtr++;
     }
-
-    sample -= m_sensorData->ADCoffset;
-
-    sampleABS = abs(sample);
+    
+    sampleABS = abs(sample_noOs);
     if (sampleABS > m_sensorData->ADCpeakSample) {
       m_sensorData->ADCpeakSample = sampleABS;
     }
-
-    re[i] = sample << 4;
+    
+    sample -= offset;
+    
+    re[i] = sample << (4 - OVERSAMPLING);
     im[i] = 0;
   }
 
@@ -412,7 +422,7 @@ void SigProc::Calc()
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
     m_sensorData->bin[binNr].mag = sqrt(pow(re[binNr], 2) + pow(im[binNr], 2));
   }
-
+ 
   samplePtrOut = (samplePtrOut + (NR_OF_FFT_SAMPLES >> 1)) & (RINGBUFFER_SIZE - 1);
 }
 
@@ -541,7 +551,7 @@ void SigProc::FFT(int16_t *fr, int16_t *fi, uint16_t m) {
 void SigProc::DebugConsoleOutSamples(uint16_t startIdx, uint16_t stopIdx) {
   Serial.printf("\nSnapshots: %d   ADC-offset: %d   Clipping: %d   ADCpeak: %d\n", m_sensorData->snapshotCtr, m_sensorData->ADCoffset, m_sensorData->clippingCtr, m_sensorData->ADCpeakSample);
 
-  if ((startIdx >= RINGBUFFER_SIZE) || (stopIdx >= RINGBUFFER_SIZE)) {
+  if ((startIdx >= NR_OF_BINS) || (stopIdx >= NR_OF_BINS)) {
     Serial.println("Invalid sample index!");
     return;
   }
@@ -569,7 +579,8 @@ void SigProc::DebugConsoleOutBins(uint16_t startIdx, uint16_t stopIdx) {
   for (uint16_t binNr = startIdx; binNr <= stopIdx; binNr++) {
     Serial.printf("BIN %03d ", binNr);
     for (uint8_t x = 0; x < BARS; x++) {
-      if (x < ((m_sensorData->bin[binNr].magMax * BARS) / 16383))
+      //if (x < ((m_sensorData->bin[binNr].magMax * BARS) / 16383))if (x < ((m_sensorData->bin[binNr].magMax * BARS) / 16383))
+      if (x < ((m_sensorData->bin[binNr].magMax * BARS) / 16383))if (x < ((m_sensorData->bin[binNr].magMax * BARS)))
         Serial.printf("#");
       else
         Serial.printf("-");

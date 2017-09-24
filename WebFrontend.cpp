@@ -373,8 +373,8 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += F("'><label>&nbsp;degree&nbsp;(0 is facing upward)</td></tr>");
       data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
-      data += F("'><label>&nbsp;&nbsp;Threshold factor: </label><input name='ThresholdFactor' size='10' maxlength='5' Value='");
-      data += m_settings->Get("ThresholdFactor", "1");
+      data += F("'><label>&nbsp;&nbsp;Bin-threshold: </label><input name='Threshold' size='10' maxlength='6' Value='");
+      data += m_settings->Get("Threshold", "1");
       data += F("'></td></tr>");
 
       // Data port
@@ -406,13 +406,9 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += m_settings->GetBool("PubBMAK", false) ? "checked" : "";
       data += F(">Bins MAK&nbsp;&nbsp;&nbsp;");
 
-      data += F("<input name='PubBMAKT' type='checkbox' value='true' ");
-      data += m_settings->GetBool("PubBMAKT", false) ? "checked" : "";
-      data += F(">Bins MAKT&nbsp;&nbsp;&nbsp;");
-
-      data += F("<input name='PubGTHRESHS' type='checkbox' value='true' ");
-      data += m_settings->GetBool("PubGTHRESHS", false) ? "checked" : "";
-      data += F(">Groups Thresh&nbsp;&nbsp;&nbsp;");
+      data += F("<input name='PubGCAL' type='checkbox' value='true' ");
+      data += m_settings->GetBool("PubGCAL", false) ? "checked" : "";
+      data += F(">Groups Cal&nbsp;&nbsp;&nbsp;");
 
       data += F("</td></tr>");
 

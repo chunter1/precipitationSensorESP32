@@ -38,7 +38,7 @@ private:
   void AddBinMagAVGReading();
   void AddBinMagAVGkorrReading();
   void AddBinMagAVGkorrThreshReading();
-  void AddGroupMagAVGkorrThresholdsReading();
+  void AddGroupMagAVGcalReading();
   void Transmit();
 
 };
