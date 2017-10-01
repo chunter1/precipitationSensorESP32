@@ -18,6 +18,7 @@ void AccessPoint::Begin(int autoClose) {
   WiFi.softAPConfig(m_ip, m_ip, m_subnet);
   WiFi.softAP(ssid.c_str());
   Serial.println("running, SSID=" + ssid);
+  Serial.println("IP=" + WiFi.softAPIP().toString());
 
   m_autoClose = autoClose;
   m_startMillis = millis();

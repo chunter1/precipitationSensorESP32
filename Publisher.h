@@ -8,12 +8,13 @@
 #include "SensorData.h"
 #include "StateManager.h"
 #include "DataPort.h"
+#include "BME280.h"
 
 #define NR_OF_BARS 32
 
 class Publisher {
 public:
-  void Begin(Settings *settings, DataPort *dataPort);
+  void Begin(Settings *settings, DataPort *dataPort, BME280 *bme280);
   void Publish(SensorData *sensorData);
 
 private:
@@ -24,6 +25,7 @@ private:
   uint16_t m_nbrOfReadings;
   SensorData *m_sensorData;
   DataPort *m_dataPort;
+  BME280 *m_bme280;
 
   void SendToDataPort();
   void AddReading(String name, String value);

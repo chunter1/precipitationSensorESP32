@@ -41,7 +41,8 @@
  * ==========
  * 32 ... 39 Senor (ADC) (one of them, defined on the setup page)
  * 27        Watchdog
- * 25        TMP36
+ * 21        SDA + 4k7 PU  BME280
+ * 22        SCL + 4k7 PU  BME280
  *
  * Version history:
  * ================
@@ -68,6 +69,8 @@
 #include "Statistics.h"
 #include "SigProc.h"
 #include "ConnectionKeeper.h"
+#include "Wire.h"
+#include "BME280.h"
 
 StateManager stateManager;
 Settings settings;
@@ -81,6 +84,7 @@ DataPort dataPort;
 Statistics statistics;
 SigProc sigProc;
 ConnectionKeeper connectionKeeper;
+BME280 bme280;
 
 float threshold;
 byte adcPin;
@@ -180,7 +184,7 @@ static bool StartWifi(Settings *settings) {
 
   Serial.println("Starting frontend");
   frontend.SetPassword(settings->Get("FrontPass1", ""));
-  frontend.Begin(&stateManager);
+  frontend.Begin(&stateManager, &bme280);
   
   Serial.println("Starting OTA");
   ota.Begin(frontend.GetWebServer(), [] {
@@ -242,8 +246,14 @@ void setup() {
   }
   Serial.println();
 
-
   stateManager.Begin(PROGVERS, PROGNAME);
+
+  Wire.begin();
+  Wire.setClock(800000);
+  if (bme280.TryInitialize(0x76)) {
+    Serial.println("BME280 detected");
+    bme280.SetAltitudeAboveSeaLevel(settings.GetInt("Altitude", 0));
+  }
 
   StartWifi(&settings);
   connectionKeeper.Begin([](bool isCritical) {
@@ -260,7 +270,7 @@ void setup() {
   }
 
   // Initialize the publisher
-  publisher.Begin(&settings, &dataPort);
+  publisher.Begin(&settings, &dataPort, &bme280);
 
   // Initialize signal processing
   sigProc.Begin(&settings, &sensorData, &statistics, &publisher);
@@ -326,6 +336,6 @@ void loop() {
   }
 
   frontend.Handle();
-  
+
   stateManager.SetLoopEnd();
 } 

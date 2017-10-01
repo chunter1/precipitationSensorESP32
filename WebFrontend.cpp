@@ -111,8 +111,9 @@ String GetOption(String option, String defaultValue) {
 }
 
 
-void WebFrontend::Begin(StateManager *stateManager) {
+void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
   m_stateManager = stateManager;
+  m_bme280 = bme280;
 
   const char *headerKeys[] = { "User-Agent", "Cookie" };
   m_webserver.collectHeaders(headerKeys, sizeof(headerKeys) / sizeof(char*));
@@ -182,6 +183,16 @@ void WebFrontend::Begin(StateManager *stateManager) {
       result += BuildHardwareRow("WiFi:", String(WiFi.RSSI()) + "&nbsp;dBm", "Mode: " + WifiModeToString(WiFi.getMode()) + "&nbsp;&nbsp;&nbsp;Time to connect: " + String(m_stateManager->GetWiFiConnectTime(), 1) + " s");
       result += BuildHardwareRow("Chip ID:", Tools::GetChipId());
       result += BuildHardwareRow("Chip Revision:", Tools::GetChipRevision());
+
+      String bme = "missing";
+      if (m_bme280->IsPresent()) {
+        m_bme280->Measure();
+        bme = "T:" + String(m_bme280->Values.Temperature, 1);
+        bme += " H:" + String(m_bme280->Values.Humidity);
+        bme += " P:" + String(m_bme280->Values.Pressure);
+      }
+      result += BuildHardwareRow("BME280:", bme);
+
       if (m_hardwareCallback != nullptr) {
         String rawData = m_hardwareCallback();
         result += "<tr><td>";
@@ -375,6 +386,8 @@ void WebFrontend::Begin(StateManager *stateManager) {
       data += m_settings->Get("PublishInterval", "60");
       data += F("'><label>&nbsp;&nbsp;Bin-threshold: </label><input name='Threshold' size='10' maxlength='6' Value='");
       data += m_settings->Get("Threshold", "1");
+      data += F("'><tr><td> <label>Altitude: </label></td><td><input name='Altitude' size='5' maxlength='5' Value='");
+      data += m_settings->Get("Altitude", "0");
       data += F("'></td></tr>");
 
       // Data port

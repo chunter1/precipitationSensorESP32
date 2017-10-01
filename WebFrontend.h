@@ -6,12 +6,13 @@
 #include "ESP32WebServer.h"
 #include "StateManager.h"
 #include "Settings.h"
+#include "BME280.h"
 
 class WebFrontend {
  public:
    WebFrontend(int port, Settings *settings);
    void Handle();
-   void Begin(StateManager *stateManager);
+   void Begin(StateManager *stateManager, BME280 *bme280);
    ESP32WebServer *GetWebServer();
    typedef void CommandCallbackType(String);
    typedef String HardwareCallbackType();
@@ -23,6 +24,7 @@ private:
   int m_port;
   ESP32WebServer m_webserver;
   StateManager *m_stateManager;
+  BME280 *m_bme280;
   CommandCallbackType *m_commandCallback;
   HardwareCallbackType *m_hardwareCallback;
   String m_password;
