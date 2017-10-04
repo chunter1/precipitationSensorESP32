@@ -68,10 +68,12 @@ void Publisher::SendToDataPort() {
   //payload += "GroupMagThresh=" + groupMagThresh + ",";
   payload += "Debug0=" + Debug0 + ",";
 
-  m_bme280->Measure();
-  payload += "Temperature=" + String(m_bme280->Values.Temperature, 1) + ",";
-  payload += "Humidity=" + String(m_bme280->Values.Humidity) + ",";
-  payload += "Pressure=" + String(m_bme280->Values.Pressure) + ",";
+  if (m_bme280->IsPresent()) {
+    m_bme280->Measure();
+    payload += "Temperature=" + String(m_bme280->Values.Temperature, 1) + ",";
+    payload += "Humidity=" + String(m_bme280->Values.Humidity) + ",";
+    payload += "Pressure=" + String(m_bme280->Values.Pressure) + ",";
+  }
 
   m_dataPort->AddPayload(payload);
 }

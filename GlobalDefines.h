@@ -2,7 +2,7 @@
 #define __GLOBALDEFINES__h
 
 #define PROGNAME                         "precipitationSensor"
-#define PROGVERS                         "0.13.0"
+#define PROGVERS                         "0.13.1"
 
 #define DEFAULT_SSID                      "SSID"
 #define DEFAULT_PASSWORD                  "PASSWORD"
