@@ -40,7 +40,7 @@ private:
   void AddBinMagAVGReading();
   void AddBinMagAVGkorrReading();
   void AddBinMagAVGkorrThreshReading();
-  void AddGroupMagAVGcalReading();
+  void AddGroupMagCalReading();
   void Transmit();
 
 };

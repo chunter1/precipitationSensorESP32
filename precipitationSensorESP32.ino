@@ -31,7 +31,7 @@
  * Sampling period:       50 ms
  * FFT points/samples:    1024
  * FFT resolution:        20 Hz
- * FFT frequency range:   DC...10220 Hz
+ * FFT frequency range:   DC...10220 Hz (limited by LPF to 8 kHz)
  * 
  * Arduino IDE board settings:
  * ===========================
@@ -86,7 +86,7 @@ SigProc sigProc;
 ConnectionKeeper connectionKeeper;
 BME280 bme280;
 
-float threshold;
+float thresholdFactor;
 byte adcPin;
 //uint mountingAngle;
 
@@ -228,7 +228,7 @@ void setup() {
   settings.Read();
 
   // Get the measurement settings
-  threshold = settings.GetFloat("Threshold", DEFAULT_THRESHOLD);
+  thresholdFactor = settings.GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
   //mountingAngle = settings.GetUInt("SMA", 45);
 
   // Get the group-boundaries from the settings
@@ -290,10 +290,10 @@ String CommandHandler(String command) {
   if (command.startsWith("alive")) {
     result = "alive";
   }
-  else if (command.startsWith("treshold=")) {
-    threshold = command.substring(9).toFloat();
-    settings.Add("Threshold", threshold);
-    Serial.println(threshold);
+  else if (command.startsWith("thresholdFactor=")) {
+    thresholdFactor = command.substring(9).toFloat();
+    settings.Add("ThresholdFactor", thresholdFactor);
+    Serial.println(thresholdFactor);
   }
   else if (command.startsWith("version")) {
     result = "version=" + String(PROGVERS);

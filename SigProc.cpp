@@ -2,8 +2,12 @@
 
 #define N_WAVETABLE_bits           10
 #define N_WAVETABLE                (1 << N_WAVETABLE_bits)
-#define N_WAVETABLE_HALF           (N_WAVETABLE >> 1)
 #define N_WAVETABLE_QUARTER        (N_WAVETABLE >> 2)
+
+// 0 Hz - 8000 Hz, gain = 1, ripple = 0.1 dB
+// 10220 Hz - 20480 Hz, gain = 0, attenuation = -73 dB
+#define FILTER_TAP_NUM             64
+#define FILTER_TAP_NUM_HALF        (FILTER_TAP_NUM >> 1)
 
 #define BARS                       64
 
@@ -248,6 +252,13 @@ const uint16_t HANN_WINDOW_TABLE[N_WAVETABLE] = {
   15, 11, 8, 5, 3, 1, 0, 0
 };
 
+const int16_t FIRcoeff[FILTER_TAP_NUM_HALF] = {
+  -6, 9, 41, 46, -8, -61, -18, 81,
+  69, -80, -139, 41, 212, 48, -263, -190,
+  261, 375, -171, -575, -40, 745, 399, -820,
+  -930, 708, 1688, -241, -2887, -1172, 6112, 13209
+};
+
 void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *statistics, Publisher *publisher) {
   m_sensorData = sensorData;
   m_settings = settings;
@@ -267,37 +278,54 @@ void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *stat
   adcAttachPin(m_adcPin);
 
   // Initialize the sampling timer
-  timer = timerBegin(0, 79994880 / SAMPLE_RATE, true);
+  timer = timerBegin(0, CPU_CLOCK / SAMPLE_RATE, true);
   timerAlarmWrite(timer, 1, true);
   timerAttachInterrupt(timer, &SigProc::onTimer, true);
 }
 
 void IRAM_ATTR SigProc::onTimer()
 {
-  static uint8_t osCtr = 0;
-  static int16_t dataSum = 0;
+  //static int16_t firRb[256];        // can be reduced to FILTER_TAP_NUM if needed
+  static int16_t firRb[FILTER_TAP_NUM];
+  static uint8_t firRbPtr = 0;
+  int32_t FIRsum;
 
-  //digitalWrite(DEBUG_GPIO_ISR, HIGH);
+#ifdef DEBUG
+  digitalWrite(DEBUG_GPIO_ISR, HIGH);
+#endif
 
-  dataSum += analogRead(m_adcPin) - 2048;     // approx. 10 us
-  
-  if (++osCtr >= (1 << OVERSAMPLING)) {
-    sampleRb[samplePtrIn] = dataSum;
+  firRb[firRbPtr] = analogRead(m_adcPin) - 2048;     // approx. 10 us
+
+  // 2x decimation
+  if (firRbPtr & 0x01) {
+    
+    //sampleRb[samplePtrIn] = (firRb[firRbPtr] + firRb[(uint8_t)(firRbPtr - 1)]) >> 1;
+    FIRsum = 0;
+    for (uint16_t i = 0; i < FILTER_TAP_NUM_HALF; i++) {
+      FIRsum += ((firRb[(firRbPtr - i) & (FILTER_TAP_NUM - 1)] + firRb[(firRbPtr - ((FILTER_TAP_NUM - 1) - i)) & (FILTER_TAP_NUM - 1)]) * FIRcoeff[i]);
+    }
+    sampleRb[samplePtrIn] = FIRsum >> 15;
+    
     samplePtrIn = (++samplePtrIn) & (RINGBUFFER_SIZE - 1);    
     if (samplePtrIn == samplePtrOut) {
       RbOvFlag = 1;
     }
-    dataSum = 0;
-    osCtr = 0;
   }
 
-  //digitalWrite(DEBUG_GPIO_ISR, LOW);
+  firRbPtr = (firRbPtr + 1) & (FILTER_TAP_NUM - 1);
+  
+#ifdef DEBUG
+  digitalWrite(DEBUG_GPIO_ISR, LOW);
+#endif  
 }
 
 void SigProc::Handle()
 {
   while (SnapPending()) {
-    //digitalWrite(DEBUG_GPIO_MAIN, HIGH);
+    
+#ifdef DEBUG    
+    digitalWrite(DEBUG_GPIO_MAIN, HIGH);
+#endif
 
     Calc();
 
@@ -307,10 +335,11 @@ void SigProc::Handle()
       m_sensorData->snapshotCtr++;
 
       // 25 ms snapshot interval --> 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
-      if (m_sensorData->snapshotCtr >= ((80 >> OVERSAMPLING) * publishInterval)) {
+      if (m_sensorData->snapshotCtr >= (40 * publishInterval)) {
         m_statistics->Finalize();
         m_publisher->Publish(m_sensorData);
-/*
+        
+#ifdef DEBUG
         // FOR DEBUG PURPOSE ONLY
         StopCapture();
         //DebugConsoleOutSamples(0, 40);
@@ -320,7 +349,8 @@ void SigProc::Handle()
         DebugConsoleOutBins(376, 383);
         DebugConsoleOutBins(504, 511);
         StartCapture();
-*/
+#endif
+
         m_statistics->Reset();
       }
     } else {
@@ -328,7 +358,10 @@ void SigProc::Handle()
       RbOvFlag = 0;
     }
 
-    //digitalWrite(DEBUG_GPIO_MAIN, LOW);    
+#ifdef DEBUG
+    digitalWrite(DEBUG_GPIO_MAIN, LOW);    
+#endif
+
   }
 }
 
@@ -374,9 +407,7 @@ void SigProc::Calc()
   uint16_t lastSampleIdx;
   uint16_t RBidx;
   int16_t sample;
-  int16_t sample_noOs;
   int32_t sampleSUM;
-  int16_t offset;
   uint16_t sampleABS;
   int16_t re[NR_OF_FFT_SAMPLES];
   int16_t im[NR_OF_FFT_SAMPLES];
@@ -391,28 +422,25 @@ void SigProc::Calc()
     RBidx = (samplePtrOut + i) & (RINGBUFFER_SIZE - 1);
     sampleSUM += sampleRb[RBidx];
   }  
-  offset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
-  m_sensorData->ADCoffset = offset >> OVERSAMPLING;
+  m_sensorData->ADCoffset = sampleSUM >> NR_OF_FFT_SAMPLES_bit;
   
   // process each sample
   for (uint16_t i = 0; i < NR_OF_FFT_SAMPLES; i++) {
     RBidx = (samplePtrOut + i) & (RINGBUFFER_SIZE - 1);
     sample = sampleRb[RBidx];
 
-    sample_noOs = sample >> OVERSAMPLING;
-
-    if ((sample_noOs <= -2048) || (sample_noOs >= 2047)) {
+    if ((sample < -2047) || (sample > 2046)) {
       m_sensorData->clippingCtr++;
     }
     
-    sampleABS = abs(sample_noOs);
+    sampleABS = abs(sample);
     if (sampleABS > m_sensorData->ADCpeakSample) {
       m_sensorData->ADCpeakSample = sampleABS;
     }
     
-    sample -= offset;
+    sample -= m_sensorData->ADCoffset;
     
-    re[i] = sample << (4 - OVERSAMPLING);
+    re[i] = sample << 4;
     im[i] = 0;
   }
 

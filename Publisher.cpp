@@ -45,7 +45,8 @@ void Publisher::SendToDataPort() {
   String groupMagAVG;
   String groupMagAVGkorr;
   String groupMagAVGkorrDom;
-  //String groupMagThresh;
+  String groupMagThresh;
+  String groupMagAboveThreshCnt;
   String Debug0;
 
   for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
@@ -53,7 +54,8 @@ void Publisher::SendToDataPort() {
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + " ";
     groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + " ";
     groupMagAVGkorrDom += String(m_sensorData->binGroup[i].magAVGkorrDom, 4) + " ";
-    //groupMagThresh += String(m_sensorData->binGroup[i].magThresh, 4) + " ";
+    groupMagThresh += String(m_sensorData->binGroup[i].magThresh) + " ";
+    groupMagAboveThreshCnt += String(m_sensorData->binGroup[i].magAboveThreshCnt) + " ";
   }
 
   // output first 32 bins for 50Hz noise analyzation
@@ -65,7 +67,8 @@ void Publisher::SendToDataPort() {
   payload += "GroupMagAVG=" + groupMagAVG + ",";
   payload += "GroupMagAVGkorr=" + groupMagAVGkorr + ",";
   payload += "GroupMagAVGkorrDom=" + groupMagAVGkorrDom + ",";
-  //payload += "GroupMagThresh=" + groupMagThresh + ",";
+  payload += "GroupMagThresh=" + groupMagThresh + ",";
+  payload += "GroupMagAboveThreshCnt=" + groupMagAboveThreshCnt + ",";
   payload += "Debug0=" + Debug0 + ",";
 
   if (m_bme280->IsPresent()) {
@@ -112,7 +115,7 @@ void Publisher::Publish(SensorData *sensorData) {
   }
   if (m_settings->GetBool("PubGCAL", false)) {
     m_dummySuffix = "";
-    AddGroupMagAVGcalReading();
+    AddGroupMagCalReading();
   }
 
   Transmit();
@@ -249,10 +252,10 @@ void Publisher::AddBinMagAVGkorrReading() {
   AddReading("BinMagAVGkorr", binsMagAVGkorr);
 }
 
-void Publisher::AddGroupMagAVGcalReading() {
-  String groupsMagAVGkorrOfssets;
+void Publisher::AddGroupMagCalReading() {
+  String groupsMagThresh;
   for (byte binGroupNr = 0; binGroupNr <  m_settings->BaseData.NrOfBinGroups; binGroupNr++) {
-    groupsMagAVGkorrOfssets += String(m_sensorData->binGroup[binGroupNr].magThresh, 4) + "%20";
+    groupsMagThresh += String(m_sensorData->binGroup[binGroupNr].magThresh) + "%20";
   }
-  AddReading("GroupsMagAVGkorrOfssets", groupsMagAVGkorrOfssets);
+  AddReading("groupsMagThresh", groupsMagThresh);
 }

@@ -74,24 +74,48 @@ const float dropInFOVsnapshots_table[NR_OF_BINS] = {
 void Statistics::Begin(Settings *settings, SensorData *sensorData) {
   m_settings = settings;
   m_sensorData = sensorData;
-  threshold = m_settings->GetFloat("Threshold", DEFAULT_THRESHOLD);
+  thresholdFactor = m_settings->GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
 
   Reset();
 }
 
 void Statistics::Calibrate() {
-  // Store current magAVG values as calibration reference
+  // store current magMax values as calibration reference
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
-    m_sensorData->binGroup[binGroupNr].magThresh = m_sensorData->binGroup[binGroupNr].magAVGkorr;
+    // avoid threshold to be 0
+    if (m_sensorData->binGroup[binGroupNr].magMax > 0) {
+      m_sensorData->binGroup[binGroupNr].magThresh = m_sensorData->binGroup[binGroupNr].magMax;
+    } else {
+      m_sensorData->binGroup[binGroupNr].magThresh = 1;
+    }
   }
 }
 
 void Statistics::Calc() {
+  uint8_t aboveThresh;
+  
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {    
     if (m_sensorData->bin[binNr].mag > m_sensorData->bin[binNr].magMax) {
       m_sensorData->bin[binNr].magMax = m_sensorData->bin[binNr].mag;
     }
-    m_sensorData->bin[binNr].magSum += m_sensorData->bin[binNr].mag;
+  }
+    
+  // ignore magnitudes below threshold
+  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) { 
+    
+    aboveThresh = 0;
+    
+    // scan through all bins within the group
+    for (uint16_t binNr = m_sensorData->binGroup[binGroupNr].firstBin; binNr <= m_sensorData->binGroup[binGroupNr].lastBin; binNr++) {
+      if (m_sensorData->bin[binNr].mag > (m_sensorData->binGroup[binGroupNr].magThresh * thresholdFactor)) {
+        m_sensorData->bin[binNr].magSum += m_sensorData->bin[binNr].mag;
+        aboveThresh = 1;
+      }
+    }
+    
+    if (aboveThresh) {
+      m_sensorData->binGroup[binGroupNr].magAboveThreshCnt++;
+    }
   }
 }
 
@@ -163,10 +187,15 @@ void Statistics::Finalize() {
 
 void Statistics::Reset()
 {
-  // bin-level statistic
+  // bin-level
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
     m_sensorData->bin[binNr].magSum = 0;
     m_sensorData->bin[binNr].magMax = 0;
+  }
+
+  // group-level
+  for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
+    m_sensorData->binGroup[binGroupNr].magAboveThreshCnt = 0;  
   }
 
   m_sensorData->ADCpeakSample = 0;

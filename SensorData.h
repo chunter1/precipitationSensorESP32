@@ -15,10 +15,11 @@ struct FFT_BIN_GROUP {
   uint8_t firstBin;  
   uint8_t lastBin;
   float magAVG;
-  float magThresh;
+  uint16_t magThresh;
   float magAVGkorr;
   float magAVGkorrDom;
   uint16_t magMax;
+  uint16_t magAboveThreshCnt;
 };
 
 class SensorData {
