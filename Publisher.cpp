@@ -90,11 +90,6 @@ void Publisher::Publish(SensorData *sensorData) {
     SendToDataPort();
   }
 
-  if (m_settings->GetBool("PubCompact", false)) {
-    m_dummySuffix = "";
-    AddCommonReadings();
-    AddCompactReadings();    
-  }
   if (m_settings->GetBool("PubBM", false)) {
     m_dummySuffix = "_BINS_MAG";
     AddCommonReadings();
@@ -152,20 +147,6 @@ void Publisher::AddCommonReadings() {
   AddReading("MagMax", m_sensorData->magMax);
   AddReading("MagAVG", m_sensorData->magAVG);
   AddReading("MagAVGkorr", m_sensorData->magAVGkorr);
-}
-
-void Publisher::AddCompactReadings() {
-  String groupMagMax;
-  String groupMagAVG;
-  String groupMagAVGkorr;
-  for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
-    groupMagMax += String(m_sensorData->binGroup[i].magMax) + "%20";
-    groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + "%20";
-    groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + "%20";
-  }
-  AddReading("GroupMagMax", groupMagMax);
-  AddReading("GroupMagAVG", groupMagAVG);
-  AddReading("GroupMagAVGkorr", groupMagAVGkorr);
 }
 
 void Publisher::AddBinsMagReadings() {

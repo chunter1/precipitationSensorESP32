@@ -73,11 +73,11 @@ bool WebFrontend::IsAuthentified() {
   return result;
 }
 
-String WebFrontend::GetBinGroupRow(byte nbr) {
+String WebFrontend::GetBinGroupRow(byte nbr, uint16_t lastBin) {
   String result = "";
   String bgfKey = "BG" + String(nbr) + "F";
   String bgtKey = "BG" + String(nbr) + "T";
-  byte groupSize = m_settings->BaseData.NrOfBins / m_settings->BaseData.NrOfBinGroups;
+  byte groupSize = lastBin / m_settings->BaseData.NrOfBinGroups;
 
   result += "<tr><td><label>Bin group ";
   result += String(nbr +1);
@@ -147,6 +147,10 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
   m_webserver.on("/help", [this]() {
     if (IsAuthentified()) {
       String result;
+
+      m_webserver.setContentLength(CONTENT_LENGTH_UNKNOWN);
+      m_webserver.send(200);
+
       result += GetTop();
       result += GetNavigation();
       result += FPSTR(help);
@@ -165,11 +169,19 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
         result += "<td>" + String(mps, 2) + " m/s</td>";
         result += "<td>" + String(mps * 3.6, 1) + " km/h</td>";
         result += "</tr>";
+
+        if ((int)i % 32 == 0) {
+          m_webserver.sendContent(result);
+          result = "";
+        }
+
       }
       result += "</Table>";
 
       result += GetBottom();
-      m_webserver.send(200, "text/html", result);
+      m_webserver.sendContent(result);
+
+      m_webserver.client().stop();
     }
   });
 
@@ -266,12 +278,12 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
             break;
           }
         }
-        if (noDigit || bgF.length() == 0 || bgT.length() == 0 || bgFI < 1 || bgFI > 255 || bgTI < 1 || bgTI > 255) {
+        if (noDigit || bgF.length() == 0 || bgT.length() == 0 || bgFI < 1 || bgFI > 512 || bgTI < 1 || bgTI > 512) {
           saveIt = false;
           String content = GetTop();
           content += F("<div align=center>");
           content += F("<br><br><h2><font color='red'>");
-          content += F("Bin numbers must be in the range 1 ... 255</font></h2>");
+          content += F("Bin numbers must be in the range 1 ... 512</font></h2>");
           content += F("</div>");
           content += GetBottom();
           m_webserver.send(200, "text/html", content);
@@ -391,18 +403,12 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       data += F("'></td></tr>");
 
       // Data port
-      data += F("<tr><td><label>Publish: </label></td><td>");
-      data += F("<input name='UseDataPort' type='checkbox' value='true' ");
-      data += m_settings->GetBool("UseDataPort", false) ? "checked" : "";
-      data += F(">Use data port (81)&nbsp;&nbsp;&nbsp;");
+      data += F("<tr><td><label>Publish:</label></td><td>");
+      data += F("Data port for FHEM is 81");
       data += F("</td></tr>");
 
       // Flags
-      data += F("<tr><td><label>Publish: </label></td><td>");
-      data += F("<input name='PubCompact' type='checkbox' value='true' "); 
-      data += m_settings->GetBool("PubCompact", false) || hasNoConfiguration ? "checked" : "";
-      data += F(">Compact&nbsp;&nbsp;&nbsp;");
-
+      data += F("<tr><td><label>Optional data: </label></td><td>");
       data += F("<input name='PubBM' type='checkbox' value='true' ");
       data += m_settings->GetBool("PubBM", false) ? "checked" : "";
       data += F(">Bins mag&nbsp;&nbsp;&nbsp;");
@@ -428,7 +434,7 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       // Bin group boundaries
       data += F("<tr><td></td><td><br>Bin group boundaries</td></tr>");
       for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
-        data += GetBinGroupRow(i);
+        data += GetBinGroupRow(i, 256);
       }
 
 

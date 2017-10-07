@@ -191,10 +191,8 @@ static bool StartWifi(Settings *settings) {
     sigProc.StopCapture();
   });
 
-  if (settings->GetBool("UseDataPort", false)) {
-    Serial.println("Starting data port");
-    dataPort.Begin(81);
-  }
+  Serial.println("Starting data port");
+  dataPort.Begin(81);
 
   return result;
 }
