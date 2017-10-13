@@ -392,12 +392,12 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       data += GetOption("39", value);
       data += F("</select>&nbsp;&nbsp;");
       data += F("<tr><td> <label>Mounting angle: </label></td><td><input name='SMA' size='5' maxlength='3' Value='");
-      data += m_settings->Get("SMA", "45");
-      data += F("'><label>&nbsp;degree&nbsp;(0 is facing upward)</td></tr>");
+      data += m_settings->Get("SMA", "0");
+      data += F("'><label>&nbsp;degree&nbsp;(0 is facing up-/downward)</td></tr>");
       data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
       data += F("'><label>&nbsp;&nbsp;Threshold Factor: </label><input name='ThresholdFactor' size='10' maxlength='6' Value='");
-      data += m_settings->Get("ThresholdFactor", "1");
+      data += m_settings->Get("ThresholdFactor", "2");
       data += F("'><tr><td> <label>Altitude: </label></td><td><input name='Altitude' size='5' maxlength='5' Value='");
       data += m_settings->Get("Altitude", "0");
       data += F("'></td></tr>");
