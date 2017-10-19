@@ -2,7 +2,7 @@
 #define __GLOBALDEFINES__h
 
 #define PROGNAME                          "precipitationSensor"
-#define PROGVERS                          "0.14.1"
+#define PROGVERS                          "0.15.0"
 
 #define CPU_CLOCK                         80000000
 

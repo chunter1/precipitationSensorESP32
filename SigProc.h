@@ -34,7 +34,7 @@ private:
   static void IRAM_ATTR onTimer();
   uint8_t SnapPending();
   inline int16_t MAS(int16_t a, int16_t b);
-  void HannWindow(int16_t *re, uint8_t m);
+  void Window(int16_t *re, uint8_t m, int16_t *windowTable);
   void FFT(int16_t *fr, int16_t *fi, uint16_t m);
   
   void DebugConsoleOutBins(uint16_t startIdx, uint16_t stopIdx);

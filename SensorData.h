@@ -5,21 +5,21 @@
 
 struct FFT_BIN {
   uint16_t mag;
-  uint32_t magSum;
+  uint16_t magMax;
+  float magSum;
   float magAVG;
   float magAVGkorr;
-  uint16_t magMax;
 };
 
 struct FFT_BIN_GROUP {
   uint8_t firstBin;  
   uint8_t lastBin;
+  uint16_t magMax;
   float magAVG;
   uint16_t magThresh;
+  uint16_t magAboveThreshCnt;
   float magAVGkorr;
   float magAVGkorrDom;
-  uint16_t magMax;
-  uint16_t magAboveThreshCnt;
 };
 
 class SensorData {

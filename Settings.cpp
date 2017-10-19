@@ -225,7 +225,7 @@ void Settings::SaveCalibration(SensorData *data) {
   
   for (byte binGroupNr = 0; binGroupNr < BaseData.NrOfBinGroups; binGroupNr++) {
     String key = "BGC" + String(binGroupNr);
-    String value = String(data->binGroup[binGroupNr].magThresh, 4);
+    String value = String(data->binGroup[binGroupNr].magThresh);
     nvs_set_str(handle, key.c_str(), value.c_str());
     nvs_commit(handle);
   }
@@ -254,7 +254,7 @@ void Settings::LoadCalibration(SensorData *data) {
     if (error == ESP_OK) {
       value = String(str).toFloat();
     }
-    data->binGroup[binGroupNr].magThresh = String(str).toFloat();
+    data->binGroup[binGroupNr].magThresh = String(str).toInt();
     delete str;
   }
 

@@ -240,7 +240,7 @@ void setup() {
   //// Test
   Serial.println("Ref: ");
   for (byte i = 0; i < NR_OF_BIN_GROUPS; i++) {
-    Serial.print(String(sensorData.binGroup[i].magThresh, 4) + " ");
+    Serial.print(String(sensorData.binGroup[i].magThresh) + " ");
   }
   Serial.println();
 
