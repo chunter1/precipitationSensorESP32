@@ -70,6 +70,7 @@ const float dropInFOVsnapshots[NR_OF_BINS] = {
   0.6402, 0.6389, 0.6377, 0.6364, 0.6352, 0.6339, 0.6327, 0.6314
 };
 
+/*
 const float hydrometeorReflectivityFactor[NR_OF_BINS] = {
   1.0, 1.0, 3.5, 7.3, 12.2, 18.5, 25.8, 34.1,
   43.8, 54.8, 66.6, 80.0, 94.7, 110.5, 127.6, 146.6,
@@ -136,6 +137,7 @@ const float hydrometeorReflectivityFactor[NR_OF_BINS] = {
   34195310.8, 34483240.7, 34772377.7, 35062721.9, 35354273.2, 35647031.6, 35940997.2, 36236169.9,
   36532549.7, 36830136.6, 37129260.1, 37429262.6, 37730472.3, 38032889.1, 38336513.0, 38641344.0
 };
+*/
 
 void Statistics::Begin(Settings *settings, SensorData *sensorData) {
   m_settings = settings;
@@ -197,7 +199,8 @@ void Statistics::Finalize() {
   
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
     m_sensorData->bin[binNr].magAVG = m_sensorData->bin[binNr].magSum / m_sensorData->snapshotCtr;
-    m_sensorData->bin[binNr].magAVGkorr = m_sensorData->bin[binNr].magAVG / dropInFOVsnapshots[binNr] / hydrometeorReflectivityFactor[binNr];
+    m_sensorData->bin[binNr].magAVGkorr = m_sensorData->bin[binNr].magAVG / dropInFOVsnapshots[binNr];
+    ////m_sensorData->bin[binNr].magAVGkorr = m_sensorData->bin[binNr].magAVG / dropInFOVsnapshots[binNr] / hydrometeorReflectivityFactor[binNr];
 
     if (binNr > 0) {
       m_sensorData->magAVG += m_sensorData->bin[binNr].magAVG;
@@ -225,7 +228,8 @@ void Statistics::Finalize() {
     // scan through all bins within the group
     for (uint16_t binNr = m_sensorData->binGroup[binGroupNr].firstBin; binNr <= m_sensorData->binGroup[binGroupNr].lastBin; binNr++) {
       magSumGroup += m_sensorData->bin[binNr].magSum;
-      magSumGroupKorr += m_sensorData->bin[binNr].magSum / dropInFOVsnapshots[binNr] / hydrometeorReflectivityFactor[binNr];
+      magSumGroupKorr += m_sensorData->bin[binNr].magSum / dropInFOVsnapshots[binNr];
+      ////magSumGroupKorr += m_sensorData->bin[binNr].magSum / dropInFOVsnapshots[binNr] / hydrometeorReflectivityFactor[binNr];
       
       if (m_sensorData->bin[binNr].magMax > m_sensorData->binGroup[binGroupNr].magMax) {
         m_sensorData->binGroup[binGroupNr].magMax = m_sensorData->bin[binNr].magMax;
