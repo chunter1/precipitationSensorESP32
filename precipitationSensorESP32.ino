@@ -229,11 +229,10 @@ void setup() {
   thresholdFactor = settings.GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
   //mountingAngle = settings.GetUInt("SMA", 45);
 
-  // Get the group-boundaries from the settings
+  // Get the upper group-boundaries from the settings
   for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
-    byte groupSize = settings.BaseData.NrOfBins / settings.BaseData.NrOfBinGroups;
-    sensorData.binGroup[nbr].firstBin = settings.GetUInt("BG" + String(nbr) + "F", nbr == 0 ? 1 : (nbr * groupSize));
-    sensorData.binGroup[nbr].lastBin = settings.GetUInt("BG" + String(nbr) + "T", nbr * groupSize + groupSize - 1);
+    sensorData.binGroup[nbr].lastBin = settings.GetUInt("BG" + String(nbr) + "T", defaultBinGroupBoundary[nbr]);
+    sensorData.binGroup[nbr].firstBin = (nbr == 0) ? 1 : sensorData.binGroup[nbr - 1].lastBin + 1;
   }
 
   settings.LoadCalibration(&sensorData);
@@ -308,6 +307,9 @@ String CommandHandler(String command) {
   else if (command.startsWith("calibrate")) {
     statistics.Calibrate();
     settings.SaveCalibration(&sensorData);
+  }
+  else if (command.startsWith("resetPreciAmount")) {
+    statistics.ResetPreciAmountAcc();
   }
 
   return result;

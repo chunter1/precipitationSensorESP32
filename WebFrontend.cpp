@@ -3,6 +3,7 @@
 #include "StateManager.h"
 #include "Help.h"
 #include "Tools.h"
+#include "GlobalDefines.h"
 
 WebFrontend::WebFrontend(int port, Settings *settings) : m_webserver(port) {
   m_port = port;
@@ -75,18 +76,16 @@ bool WebFrontend::IsAuthentified() {
 
 String WebFrontend::GetBinGroupRow(byte nbr, uint16_t lastBin) {
   String result = "";
-  String bgfKey = "BG" + String(nbr) + "F";
   String bgtKey = "BG" + String(nbr) + "T";
-  byte groupSize = lastBin / m_settings->BaseData.NrOfBinGroups;
-
+  
   result += "<tr><td><label>Bin group ";
-  result += String(nbr +1);
-  
-  result += ":</label></td><td><label>From:&nbsp;</label><input name='" + bgfKey + "' size='8' maxlength='3' Value='";
-  result += m_settings->Get(bgfKey, String(nbr == 0 ? 1 : (nbr * groupSize)));
-  
-  result += "'></input>&nbsp;&nbsp;&nbsp;<label>To:&nbsp;</label><input name='" + bgtKey + "' size='8' maxlength='3' Value='";
-  result += m_settings->Get(bgtKey, String(nbr * groupSize + groupSize -1));
+  result += String(nbr);
+  result += ":</label></td><td><label>";
+  if (nbr == 0) {
+    result += "1 ";
+  }
+  result += "to:&nbsp;</label><input name='" + bgtKey + "' size='8' maxlength='3' Value='";
+  result += m_settings->Get(bgtKey, String(defaultBinGroupBoundary[nbr]));
 
   result += F("'></input></td></tr>");
 
@@ -265,12 +264,10 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
 
       // Check the bin numbers if they are valid
       for (byte nbr = 0; nbr < m_settings->BaseData.NrOfBinGroups; nbr++) {
-        String bgF = m_webserver.arg("BG" + String(nbr) + "F");
         String bgT = m_webserver.arg("BG" + String(nbr) + "T");
-        long bgFI = bgF.toInt();
         long bgTI = bgT.toInt();
 
-        String all = bgF + bgT;
+        String all = bgT;
         bool noDigit = false;
         for (byte c = 0; c < all.length(); c++) {
           if(!isDigit(all[c])) {
@@ -278,12 +275,12 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
             break;
           }
         }
-        if (noDigit || bgF.length() == 0 || bgT.length() == 0 || bgFI < 1 || bgFI > 512 || bgTI < 1 || bgTI > 512) {
+        if (noDigit || bgT.length() == 0 || bgTI < 1 || bgTI > 511) {
           saveIt = false;
           String content = GetTop();
           content += F("<div align=center>");
           content += F("<br><br><h2><font color='red'>");
-          content += F("Bin numbers must be in the range 1 ... 512</font></h2>");
+          content += F("Bin numbers must be in the range 1 ... 511</font></h2>");
           content += F("</div>");
           content += GetBottom();
           m_webserver.send(200, "text/html", content);

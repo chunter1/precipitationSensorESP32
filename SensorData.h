@@ -36,7 +36,8 @@ public:
   uint32_t snapshotCtr;
   uint8_t clippingCtr;
   uint8_t dominantGroup;
-
+  float preciAmount;
+  float preciAmountAcc;
 
   SensorData(uint nrOfBins, byte nrOfBinGroups);
 

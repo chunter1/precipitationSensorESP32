@@ -12,6 +12,7 @@ public:
   void Calibrate();
   void Calc();
   void Finalize();
+  void ResetPreciAmountAcc();
   void Reset();
 
 private:
