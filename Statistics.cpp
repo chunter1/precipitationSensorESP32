@@ -131,7 +131,8 @@ void Statistics::Finalize() {
   float magSumGroupKorr;
   float magSumGroupKorrCal;
   float magSumGroupKorrCalThresh;
-  float maximum;
+  float maxMagAVGkorr;
+  uint16_t maxMagAboveThreshCnt;
   uint32_t nrOfBinsInGroup;
 
   // bin-level statistics
@@ -157,8 +158,10 @@ void Statistics::Finalize() {
 
 
   // group-level statistics
-  m_sensorData->dominantGroup = 0;
-  maximum = 0;
+  m_sensorData->DomGroupMagAVGkorr = 0;
+  m_sensorData->DomGroupMagAboveThreshCnt = 0;
+  maxMagAVGkorr = 0;
+  maxMagAboveThreshCnt = 0;
   
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
     nrOfBinsInGroup = 0;
@@ -179,20 +182,27 @@ void Statistics::Finalize() {
     m_sensorData->binGroup[binGroupNr].magAVG = magSumGroup / (float)nrOfBinsInGroup / (float)m_sensorData->snapshotCtr;
     m_sensorData->binGroup[binGroupNr].magAVGkorr = magSumGroupKorr / (float)nrOfBinsInGroup / (float)m_sensorData->snapshotCtr;
 
-    if (m_sensorData->binGroup[binGroupNr].magAVGkorr > maximum) {
-      maximum = m_sensorData->binGroup[binGroupNr].magAVGkorr;
-      m_sensorData->dominantGroup = binGroupNr;
+    if (m_sensorData->binGroup[binGroupNr].magAVGkorr > maxMagAVGkorr) {
+      maxMagAVGkorr = m_sensorData->binGroup[binGroupNr].magAVGkorr;
+      m_sensorData->DomGroupMagAVGkorr = binGroupNr;
+    }
+
+    if (m_sensorData->binGroup[binGroupNr].magAboveThreshCnt > maxMagAboveThreshCnt) {
+      maxMagAboveThreshCnt = m_sensorData->binGroup[binGroupNr].magAboveThreshCnt; 
+      m_sensorData->DomGroupMagAboveThreshCnt = binGroupNr;
     }
 
     m_sensorData->binGroup[binGroupNr].magAVGkorrDom = 0;
+    m_sensorData->binGroup[binGroupNr].magAboveThreshCntDom = 0;
   }
 
-  m_sensorData->binGroup[m_sensorData->dominantGroup].magAVGkorrDom = m_sensorData->binGroup[m_sensorData->dominantGroup].magAVGkorr;
+  m_sensorData->binGroup[m_sensorData->DomGroupMagAVGkorr].magAVGkorrDom = m_sensorData->binGroup[m_sensorData->DomGroupMagAVGkorr].magAVGkorr;
+  m_sensorData->binGroup[m_sensorData->DomGroupMagAboveThreshCnt].magAboveThreshCntDom = m_sensorData->binGroup[m_sensorData->DomGroupMagAboveThreshCnt].magAboveThreshCnt;
 
   m_sensorData->preciAmount = 0;
-  if (m_sensorData->dominantGroup < DOM_GROUP_RAIN_FIRST) {
+  if (m_sensorData->DomGroupMagAboveThreshCnt < DOM_GROUP_RAIN_FIRST) {
     // snowing
-  } else if (m_sensorData->dominantGroup <= DOM_GROUP_RAIN_LAST) {
+  } else if (m_sensorData->DomGroupMagAboveThreshCnt <= DOM_GROUP_RAIN_LAST) {
     // raining
     for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
       m_sensorData->preciAmount += m_sensorData->binGroup[binGroupNr].magAVGkorr * preciAmountGroupFactor[binGroupNr];      

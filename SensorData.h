@@ -20,6 +20,7 @@ struct FFT_BIN_GROUP {
   uint16_t magAboveThreshCnt;
   float magAVGkorr;
   float magAVGkorrDom;
+  uint16_t magAboveThreshCntDom;
 };
 
 class SensorData {
@@ -35,7 +36,8 @@ public:
   uint16_t ADCpeakSample;
   uint32_t snapshotCtr;
   uint8_t clippingCtr;
-  uint8_t dominantGroup;
+  uint8_t DomGroupMagAVGkorr;
+  uint8_t DomGroupMagAboveThreshCnt;
   float preciAmount;
   float preciAmountAcc;
 

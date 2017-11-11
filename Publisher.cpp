@@ -39,7 +39,8 @@ void Publisher::SendToDataPort() {
   payload += "MagMax=" + String(m_sensorData->magMax) + ",";
   payload += "MagAVG=" + String(m_sensorData->magAVG, 8) + ",";
   payload += "MagAVGkorr=" + String(m_sensorData->magAVGkorr, 8) + ",";
-  payload += "DominantGroup=" + String(m_sensorData->dominantGroup) + ",";
+  payload += "DomGroupMagAVGkorr=" + String(m_sensorData->DomGroupMagAVGkorr) + ",";
+  payload += "DomGroupMagAboveThreshCnt=" + String(m_sensorData->DomGroupMagAboveThreshCnt) + ",";
   payload += "PreciAmount=" + String(m_sensorData->preciAmount, 8) + ",";
   payload += "PreciAmountAcc=" + String(m_sensorData->preciAmountAcc, 8) + ",";
 
