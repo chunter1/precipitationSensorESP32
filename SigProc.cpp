@@ -259,9 +259,9 @@ const int16_t BLACKMAN_NUTTALL_WINDOW[N_WAVETABLE_HALF] = {
 
 const int16_t FIRcoeff[FILTER_TAP_NUM_HALF] = {
   -6, 9, 41, 46, -8, -61, -18, 81,
-  69, -80, -139, 41, 212, 48, -263, -190,
-  261, 375, -171, -575, -40, 745, 399, -820,
-  -930, 708, 1688, -241, -2887, -1172, 6112, 13209
+  69, -80, -138, 41, 211, 48, -262, -189,
+  260, 374, -170, -573, -40, 742, 398, -817,
+  -927, 705, 1682, -240, -2877, -1168, 6090, 13161
 };
 
 void SigProc::Begin(Settings *settings, SensorData *sensorData, Statistics *statistics, Publisher *publisher) {
@@ -307,7 +307,7 @@ void IRAM_ATTR SigProc::onTimer()
     //sampleRb[samplePtrIn] = (firRb[firRbPtr] + firRb[(uint8_t)(firRbPtr - 1)]) >> 1;
     FIRsum = 0;
     for (uint16_t i = 0; i < FILTER_TAP_NUM_HALF; i++) {
-      FIRsum += ((firRb[(firRbPtr - i) & (FILTER_TAP_NUM - 1)] + firRb[(firRbPtr - ((FILTER_TAP_NUM - 1) - i)) & (FILTER_TAP_NUM - 1)]) * FIRcoeff[i]);
+      FIRsum += FIRcoeff[i] * (firRb[(firRbPtr - i) & (FILTER_TAP_NUM - 1)] + firRb[(firRbPtr - (FILTER_TAP_NUM - 1) + i) & (FILTER_TAP_NUM - 1)]);
     }
     sampleRb[samplePtrIn] = FIRsum >> 15;
     
