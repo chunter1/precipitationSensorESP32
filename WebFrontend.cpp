@@ -77,6 +77,7 @@ bool WebFrontend::IsAuthentified() {
 String WebFrontend::GetBinGroupRow(byte nbr, uint16_t lastBin) {
   String result = "";
   String bgtKey = "BG" + String(nbr) + "T";
+  String bgfKey = "BG" + String(nbr) + "F";
   
   result += "<tr><td><label>Bin group ";
   result += String(nbr);
@@ -86,6 +87,8 @@ String WebFrontend::GetBinGroupRow(byte nbr, uint16_t lastBin) {
   }
   result += "to:&nbsp;</label><input name='" + bgtKey + "' size='8' maxlength='3' Value='";
   result += m_settings->Get(bgtKey, String(defaultBinGroupBoundary[nbr]));
+  result += "'></input>&nbsp;&nbsp;&nbsp;<label>Factor:&nbsp;</label><input name='" + bgfKey + "' size='8' maxlength='10' Value='";
+  result += m_settings->Get(bgfKey, "0");
 
   result += F("'></input></td></tr>");
 
@@ -393,8 +396,8 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       data += F("'><label>&nbsp;degree&nbsp;(0 is facing up-/downward)</td></tr>");
       data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
-      data += F("'><label>&nbsp;&nbsp;Threshold Factor: </label><input name='ThresholdFactor' size='10' maxlength='6' Value='");
-      data += m_settings->Get("ThresholdFactor", "2");
+      data += F("'><label>&nbsp;&nbsp;Threshold Offset: </label><input name='ThresholdOffset' size='10' maxlength='6' Value='");
+      data += m_settings->Get("ThresholdOffset", "2");
       data += F("'><tr><td> <label>Altitude: </label></td><td><input name='Altitude' size='5' maxlength='5' Value='");
       data += m_settings->Get("Altitude", "0");
       data += F("'></td></tr>");
@@ -429,7 +432,7 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       data += F("</td></tr>");
 
       // Bin group boundaries
-      data += F("<tr><td></td><td><br>Bin group boundaries</td></tr>");
+      data += F("<tr><td></td><td><br>Bin group boundaries and precipitation amount factor</td></tr>");
       for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
         data += GetBinGroupRow(i, 256);
       }

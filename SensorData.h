@@ -17,10 +17,12 @@ struct FFT_BIN_GROUP {
   uint16_t magMax;
   float magAVG;
   uint16_t magThresh;
-  uint16_t magAboveThreshCnt;
+  float magAboveThreshCnt;
+  float magAboveThreshCntDom;
   float magAVGkorr;
   float magAVGkorrDom;
-  uint16_t magAboveThreshCntDom;
+  float magAVGkorrDom2;
+  float preciAmountFactor;
 };
 
 class SensorData {
@@ -28,7 +30,7 @@ public:
   FFT_BIN_GROUP *binGroup = NULL;
   FFT_BIN *bin = NULL;
 
-  int32_t ADCoffset;
+  int16_t ADCoffset;
   float magAVG;
   float magAVGkorr;
   uint16_t magMax;

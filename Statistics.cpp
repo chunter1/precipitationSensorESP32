@@ -3,7 +3,8 @@
 /* The following table holds the number of snapshots (a 25ms) that the "same" drop is
  * visible to the radar sensor, based on an average 1m FOV with a 0° sensor tilt
  */
-const float dropInFOVsnapshots[NR_OF_BINS] = {
+const float dropInFOVsnapshots
+[NR_OF_BINS] = {
   1.0000, 322.6667, 161.3333, 107.5556, 80.6667, 64.5333, 53.7778, 46.0952,
   40.3333, 35.8519, 32.2667, 29.3333, 26.8889, 24.8205, 23.0476, 21.5111,
   20.1667, 18.9804, 17.9259, 16.9825, 16.1333, 15.3651, 14.6667, 14.0290,
@@ -70,17 +71,10 @@ const float dropInFOVsnapshots[NR_OF_BINS] = {
   0.6402, 0.6389, 0.6377, 0.6364, 0.6352, 0.6339, 0.6327, 0.6314
 };
 
-const float preciAmountGroupFactor[NR_OF_BIN_GROUPS] = {
-  1.166015627, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0.002915039, 0.002915039, 0.002915039, 0.002915039,
-  0.002915039, 0.002915039, 0.002915039, 0.002915039, 0.002915039, 0.002915039, 0.002915039, 0.002915039,
-  0.002915039, 0, 0, 0, 0, 0, 0, 0
-};
-
 void Statistics::Begin(Settings *settings, SensorData *sensorData) {
   m_settings = settings;
   m_sensorData = sensorData;
-  thresholdFactor = m_settings->GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
+  thresholdOffset = m_settings->GetFloat("ThresholdOffset", DEFAULT_THRESHOLD_OFFSET);
   Reset();
 }
 
@@ -101,8 +95,8 @@ void Statistics::ResetPreciAmountAcc() {
 }
 
 void Statistics::Calc() {
-  uint8_t aboveThresh;
-
+  ////uint8_t aboveThresh;
+  
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {    
     if (m_sensorData->bin[binNr].mag > m_sensorData->bin[binNr].magMax) {
       m_sensorData->bin[binNr].magMax = m_sensorData->bin[binNr].mag;
@@ -111,18 +105,18 @@ void Statistics::Calc() {
     
   // ignore magnitudes below threshold
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) { 
-    aboveThresh = 0;
-    
+    ////aboveThresh = 0;
     // scan through all bins within the group
     for (uint16_t binNr = m_sensorData->binGroup[binGroupNr].firstBin; binNr <= m_sensorData->binGroup[binGroupNr].lastBin; binNr++) {
-      if (m_sensorData->bin[binNr].mag > (m_sensorData->binGroup[binGroupNr].magThresh * thresholdFactor)) {
+      if (m_sensorData->bin[binNr].mag > (m_sensorData->binGroup[binGroupNr].magThresh + thresholdOffset)) {
         m_sensorData->bin[binNr].magSum += m_sensorData->bin[binNr].mag;
-        aboveThresh = 1;
+        m_sensorData->binGroup[binGroupNr].magAboveThreshCnt += 1 / dropInFOVsnapshots[binNr];    // TODO: Use precalculated values
+        ////aboveThresh = 1;
       }
     }
-    if (aboveThresh) {
-      m_sensorData->binGroup[binGroupNr].magAboveThreshCnt++;
-    }
+    ////if (aboveThresh) {
+    ////  m_sensorData->binGroup[binGroupNr].magAboveThreshCnt++;
+    ////}
   }
 }
 
@@ -132,7 +126,7 @@ void Statistics::Finalize() {
   float magSumGroupKorrCal;
   float magSumGroupKorrCalThresh;
   float maxMagAVGkorr;
-  uint16_t maxMagAboveThreshCnt;
+  float maxMagAboveThreshCnt;
   uint32_t nrOfBinsInGroup;
 
   // bin-level statistics
@@ -193,19 +187,21 @@ void Statistics::Finalize() {
     }
 
     m_sensorData->binGroup[binGroupNr].magAVGkorrDom = 0;
+    m_sensorData->binGroup[binGroupNr].magAVGkorrDom2 = 0;
     m_sensorData->binGroup[binGroupNr].magAboveThreshCntDom = 0;
   }
 
   m_sensorData->binGroup[m_sensorData->DomGroupMagAVGkorr].magAVGkorrDom = m_sensorData->binGroup[m_sensorData->DomGroupMagAVGkorr].magAVGkorr;
+  m_sensorData->binGroup[m_sensorData->DomGroupMagAboveThreshCnt].magAVGkorrDom2 = m_sensorData->binGroup[m_sensorData->DomGroupMagAboveThreshCnt].magAVGkorr;                  // TEST: dom index from count, value from magAVG
   m_sensorData->binGroup[m_sensorData->DomGroupMagAboveThreshCnt].magAboveThreshCntDom = m_sensorData->binGroup[m_sensorData->DomGroupMagAboveThreshCnt].magAboveThreshCnt;
-
+    
   m_sensorData->preciAmount = 0;
   if (m_sensorData->DomGroupMagAboveThreshCnt < DOM_GROUP_RAIN_FIRST) {
     // snowing
   } else if (m_sensorData->DomGroupMagAboveThreshCnt <= DOM_GROUP_RAIN_LAST) {
     // raining
     for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
-      m_sensorData->preciAmount += m_sensorData->binGroup[binGroupNr].magAVGkorr * preciAmountGroupFactor[binGroupNr];      
+      m_sensorData->preciAmount += m_sensorData->binGroup[binGroupNr].magAVGkorr * m_sensorData->binGroup[binGroupNr].preciAmountFactor;      
     }
     m_sensorData->preciAmountAcc += m_sensorData->preciAmount;  
   } else {
@@ -223,7 +219,7 @@ void Statistics::Reset()
 
   // group-level
   for (uint8_t binGroupNr = 0; binGroupNr < NR_OF_BIN_GROUPS; binGroupNr++) {
-    m_sensorData->binGroup[binGroupNr].magAboveThreshCnt = 0;  
+    m_sensorData->binGroup[binGroupNr].magAboveThreshCnt = 0;
   }
 
   m_sensorData->ADCpeakSample = 0;

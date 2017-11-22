@@ -86,7 +86,7 @@ SigProc sigProc;
 ConnectionKeeper connectionKeeper;
 BME280 bme280;
 
-float thresholdFactor;
+float thresholdOffset;
 byte adcPin;
 //uint mountingAngle;
 
@@ -226,13 +226,14 @@ void setup() {
   settings.Read();
 
   // Get the measurement settings
-  thresholdFactor = settings.GetFloat("ThresholdFactor", DEFAULT_THRESHOLD_FACTOR);
+  thresholdOffset = settings.GetFloat("ThresholdOffset", DEFAULT_THRESHOLD_OFFSET);
   //mountingAngle = settings.GetUInt("SMA", 45);
 
-  // Get the upper group-boundaries from the settings
+  // Get the upper group-boundaries and the precipitation amount factor from the settings
   for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
     sensorData.binGroup[nbr].lastBin = settings.GetUInt("BG" + String(nbr) + "T", defaultBinGroupBoundary[nbr]);
     sensorData.binGroup[nbr].firstBin = (nbr == 0) ? 1 : sensorData.binGroup[nbr - 1].lastBin + 1;
+    sensorData.binGroup[nbr].preciAmountFactor = settings.GetUInt("BG" + String(nbr) + "F", defaultPreciAmountFactor[nbr]);
   }
 
   settings.LoadCalibration(&sensorData);
@@ -287,10 +288,10 @@ String CommandHandler(String command) {
   if (command.startsWith("alive")) {
     result = "alive";
   }
-  else if (command.startsWith("thresholdFactor=")) {
-    thresholdFactor = command.substring(9).toFloat();
-    settings.Add("ThresholdFactor", thresholdFactor);
-    Serial.println(thresholdFactor);
+  else if (command.startsWith("thresholdOffset=")) {
+    thresholdOffset = command.substring(9).toFloat();
+    settings.Add("ThresholdOffset", thresholdOffset);
+    Serial.println(thresholdOffset);
   }
   else if (command.startsWith("version")) {
     result = "version=" + String(PROGVERS);

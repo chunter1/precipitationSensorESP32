@@ -48,17 +48,21 @@ void Publisher::SendToDataPort() {
   String groupMagAVG;
   String groupMagAVGkorr;
   String groupMagAVGkorrDom;
+  String groupMagAVGkorrDom2;
   String groupMagThresh;
   String groupMagAboveThreshCnt;
+  String groupMagAboveThreshCntDom;
   String Debug0;
-
+  
   for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
     groupMagMax += String(m_sensorData->binGroup[i].magMax) + " ";
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + " ";
     groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + " ";
     groupMagAVGkorrDom += String(m_sensorData->binGroup[i].magAVGkorrDom, 4) + " ";
+    groupMagAVGkorrDom2 += String(m_sensorData->binGroup[i].magAVGkorrDom2, 4) + " ";
     groupMagThresh += String(m_sensorData->binGroup[i].magThresh) + " ";
-    groupMagAboveThreshCnt += String(m_sensorData->binGroup[i].magAboveThreshCnt) + " ";
+    groupMagAboveThreshCnt += String(m_sensorData->binGroup[i].magAboveThreshCnt, 4) + " ";
+    groupMagAboveThreshCntDom += String(m_sensorData->binGroup[i].magAboveThreshCntDom, 4) + " ";
   }
 
   // output first 32 bins for 50Hz noise analyzation
@@ -70,10 +74,12 @@ void Publisher::SendToDataPort() {
   payload += "GroupMagAVG=" + groupMagAVG + ",";
   payload += "GroupMagAVGkorr=" + groupMagAVGkorr + ",";
   payload += "GroupMagAVGkorrDom=" + groupMagAVGkorrDom + ",";
+  payload += "GroupMagAVGkorrDom2=" + groupMagAVGkorrDom2 + ",";
   payload += "GroupMagThresh=" + groupMagThresh + ",";
   payload += "GroupMagAboveThreshCnt=" + groupMagAboveThreshCnt + ",";
+  payload += "GroupMagAboveThreshCntDom=" + groupMagAboveThreshCntDom + ",";
   payload += "Debug0=" + Debug0 + ",";
-
+  
   if (m_bme280->IsPresent()) {
     m_bme280->Measure();
     payload += "Temperature=" + String(m_bme280->Values.Temperature, 1) + ",";
