@@ -3,8 +3,7 @@
 /* The following table holds the number of snapshots (a 25ms) that the "same" drop is
  * visible to the radar sensor, based on an average 1m FOV with a 0° sensor tilt
  */
-const float dropInFOVsnapshots
-[NR_OF_BINS] = {
+const float dropInFOVsnapshots[NR_OF_BINS] = {
   1.0000, 322.6667, 161.3333, 107.5556, 80.6667, 64.5333, 53.7778, 46.0952,
   40.3333, 35.8519, 32.2667, 29.3333, 26.8889, 24.8205, 23.0476, 21.5111,
   20.1667, 18.9804, 17.9259, 16.9825, 16.1333, 15.3651, 14.6667, 14.0290,
