@@ -2,7 +2,7 @@
 #define __GLOBALDEFINES__h
 
 #define PROGNAME                          "precipitationSensor"
-#define PROGVERS                          "0.16.2"
+#define PROGVERS                          "0.17.0"
 
 #define CPU_CLOCK                         80000000
 
@@ -10,6 +10,7 @@
 #define DEFAULT_PASSWORD                  "PASSWORD"
 #define DEFAULT_PUBLISH_INTERVAL          60
 #define DEFAULT_THRESHOLD_OFFSET          2.0
+#define DEFAULT_COUNT_THRESHOLD           0.0
                          
 #define DEBUG_GPIO_ISR                    5
 #define DEBUG_GPIO_MAIN                   23

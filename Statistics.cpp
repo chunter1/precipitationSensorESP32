@@ -74,6 +74,7 @@ void Statistics::Begin(Settings *settings, SensorData *sensorData) {
   m_settings = settings;
   m_sensorData = sensorData;
   thresholdOffset = m_settings->GetFloat("ThresholdOffset", DEFAULT_THRESHOLD_OFFSET);
+  countThreshold = m_settings->GetFloat("CountThreshold", DEFAULT_COUNT_THRESHOLD);
   Reset();
 }
 
@@ -185,6 +186,12 @@ void Statistics::Finalize() {
       m_sensorData->DomGroupMagAboveThreshCnt = binGroupNr;
     }
 
+    if (m_sensorData->binGroup[binGroupNr].magAboveThreshCnt > countThreshold) {
+      m_sensorData->binGroup[binGroupNr].magAVGkorrGated = m_sensorData->binGroup[binGroupNr].magAVGkorr;
+    } else {
+      m_sensorData->binGroup[binGroupNr].magAVGkorrGated = 0;
+    }
+    
     m_sensorData->binGroup[binGroupNr].magAVGkorrDom = 0;
     m_sensorData->binGroup[binGroupNr].magAVGkorrDom2 = 0;
     m_sensorData->binGroup[binGroupNr].magAboveThreshCntDom = 0;

@@ -47,6 +47,7 @@ void Publisher::SendToDataPort() {
   String groupMagMax;
   String groupMagAVG;
   String groupMagAVGkorr;
+  String groupMagAVGkorrGated;
   String groupMagAVGkorrDom;
   String groupMagAVGkorrDom2;
   String groupMagThresh;
@@ -57,7 +58,9 @@ void Publisher::SendToDataPort() {
   for (byte i = 0; i < m_settings->BaseData.NrOfBinGroups; i++) {
     groupMagMax += String(m_sensorData->binGroup[i].magMax) + " ";
     groupMagAVG += String(m_sensorData->binGroup[i].magAVG, 4) + " ";
-    groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr, 4) + " ";
+    groupMagAVGkorr += String(m_sensorData->binGroup[i].magAVGkorr
+    , 4) + " ";
+    groupMagAVGkorrGated += String(m_sensorData->binGroup[i].magAVGkorrGated, 4) + " ";
     groupMagAVGkorrDom += String(m_sensorData->binGroup[i].magAVGkorrDom, 4) + " ";
     groupMagAVGkorrDom2 += String(m_sensorData->binGroup[i].magAVGkorrDom2, 4) + " ";
     groupMagThresh += String(m_sensorData->binGroup[i].magThresh) + " ";
@@ -73,6 +76,7 @@ void Publisher::SendToDataPort() {
   payload += "GroupMagMax=" + groupMagMax + ",";
   payload += "GroupMagAVG=" + groupMagAVG + ",";
   payload += "GroupMagAVGkorr=" + groupMagAVGkorr + ",";
+  payload += "GroupMagAVGkorrGated=" + groupMagAVGkorrGated + ",";
   payload += "GroupMagAVGkorrDom=" + groupMagAVGkorrDom + ",";
   payload += "GroupMagAVGkorrDom2=" + groupMagAVGkorrDom2 + ",";
   payload += "GroupMagThresh=" + groupMagThresh + ",";

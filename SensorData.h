@@ -20,6 +20,7 @@ struct FFT_BIN_GROUP {
   float magAboveThreshCnt;
   float magAboveThreshCntDom;
   float magAVGkorr;
+  float magAVGkorrGated;
   float magAVGkorrDom;
   float magAVGkorrDom2;
   float preciAmountFactor;

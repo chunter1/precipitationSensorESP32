@@ -24,7 +24,7 @@
  * of precipitation/hydrometeors by measuring the speed/doppler frequency.
  * 
  * The recommended radar sensor modules are the IPM-170 and RSM-1700 because of their
- * radial symmetric radiation pattern.
+ * radial symmetric radiation pattern.T
  * The IPM-165 or CDM-324 may be used instead, if direction independency does not matter.
  *
  * ADC sampling rate:     40960 sps (2x oversampling)
@@ -87,6 +87,7 @@ ConnectionKeeper connectionKeeper;
 BME280 bme280;
 
 float thresholdOffset;
+float countThreshold;
 byte adcPin;
 //uint mountingAngle;
 
@@ -227,8 +228,8 @@ void setup() {
 
   // Get the measurement settings
   thresholdOffset = settings.GetFloat("ThresholdOffset", DEFAULT_THRESHOLD_OFFSET);
-  //mountingAngle = settings.GetUInt("SMA", 45);
-
+  countThreshold = settings.GetFloat("CountThreshold", DEFAULT_COUNT_THRESHOLD);
+  
   // Get the upper group-boundaries and the precipitation amount factor from the settings
   for (byte nbr = 0; nbr < settings.BaseData.NrOfBinGroups; nbr++) {
     sensorData.binGroup[nbr].lastBin = settings.GetUInt("BG" + String(nbr) + "T", defaultBinGroupBoundary[nbr]);
@@ -292,6 +293,11 @@ String CommandHandler(String command) {
     thresholdOffset = command.substring(9).toFloat();
     settings.Add("ThresholdOffset", thresholdOffset);
     Serial.println(thresholdOffset);
+  }
+  else if (command.startsWith("countThreshold=")) {
+    countThreshold = command.substring(9).toFloat();
+    settings.Add("CountThreshold", countThreshold);
+    Serial.println(countThreshold);
   }
   else if (command.startsWith("version")) {
     result = "version=" + String(PROGVERS);

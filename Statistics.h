@@ -19,6 +19,7 @@ private:
   SensorData *m_sensorData;
   Settings *m_settings;
   float thresholdOffset;
+  float countThreshold;
 
   void filterMagMaxGroup();
   float noiseDebiasing(float scaleStart, float scaleStop, float scaleStep);

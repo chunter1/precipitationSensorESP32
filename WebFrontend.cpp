@@ -160,7 +160,8 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       result += "<h3>Bin speeds</h3>";
       result += "<style>table{border-collapse: collapse; width: 100 % ;}td, th{border: 1px solid #dddddd;text - align: left;padding: 8px;}</style>";
       result += "<Table>";
-      uint angle = m_settings->GetUInt("SMA", 45);
+      ////uint angle = m_settings->GetUInt("SMA", 45);
+      uint angle = 0;   // 0 = vertical orientation (up- or down)
       for (float i = 1; i < m_settings->BaseData.NrOfBins; i++) {
         float freq = i * 20.0;
         float mps = ((freq * (0.3 / 24.15)) / 2.0) / cos((PI * angle) / 180);
@@ -391,21 +392,26 @@ void WebFrontend::Begin(StateManager *stateManager, BME280 *bme280) {
       data += GetOption("38", value);
       data += GetOption("39", value);
       data += F("</select>&nbsp;&nbsp;");
-      data += F("<tr><td> <label>Mounting angle: </label></td><td><input name='SMA' size='5' maxlength='3' Value='");
-      data += m_settings->Get("SMA", "0");
-      data += F("'><label>&nbsp;degree&nbsp;(0 is facing up-/downward)</td></tr>");
-      data += F("<tr><td> <label>Publish interval: </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
+
+      // Publish interval
+      data += F("<tr><td> <label>Publish interval (s): </label></td><td><input name='PublishInterval' size='5' maxlength='4' Value='");
       data += m_settings->Get("PublishInterval", "60");
-      data += F("'><label>&nbsp;&nbsp;Threshold Offset: </label><input name='ThresholdOffset' size='10' maxlength='6' Value='");
+      data += F("'><label>&nbsp;&nbsp;(Data port for FHEM is 81)</td></tr>");
+
+      // Threshold offset
+      data += F("<tr><td> <label>Threshold offset: </label></td><td><input name='ThresholdOffset' size='10' maxlength='6' Value='");
       data += m_settings->Get("ThresholdOffset", "2");
-      data += F("'><tr><td> <label>Altitude: </label></td><td><input name='Altitude' size='5' maxlength='5' Value='");
-      data += m_settings->Get("Altitude", "0");
       data += F("'></td></tr>");
 
-      // Data port
-      data += F("<tr><td><label>Publish:</label></td><td>");
-      data += F("Data port for FHEM is 81");
-      data += F("</td></tr>");
+      // Count threshold
+      data += F("<tr><td> <label>Count threshold: </label></td><td><input name='CountThreshold' size='10' maxlength='6' Value='");
+      data += m_settings->Get("CountThreshold", "0");
+      data += F("'></td></tr>");
+
+      // Altitude
+      data += F("<tr><td> <label>Altitude (m): </label></td><td><input name='Altitude' size='5' maxlength='5' Value='");
+      data += m_settings->Get("Altitude", "0");
+      data += F("'></td></tr>");
 
       // Flags
       data += F("<tr><td><label>Optional data: </label></td><td>");
