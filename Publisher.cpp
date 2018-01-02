@@ -31,7 +31,7 @@ void Publisher::Transmit() {
 
 void Publisher::SendToDataPort() {
   String payload = "data=";
-  payload += "snapshots=" + String(m_sensorData->snapshotCtr) + ",";
+  payload += "snapshots=" + String(m_sensorData->snapshotValidCtr) + ",";
   payload += "ADCclipping=" + String(m_sensorData->clippingCtr) + ",";
   payload += "ADCpeak=" + String((100 * (m_sensorData->ADCpeakSample > 2048 ? 2048 : m_sensorData->ADCpeakSample)) / 2048) + ",";
   payload += "ADCoffset=" + String(m_sensorData->ADCoffset) + ",";
@@ -152,7 +152,7 @@ void Publisher::AddReading(String name, float value) {
 }
 
 void Publisher::AddCommonReadings() {
-  AddReading("snapshots", m_sensorData->snapshotCtr);
+  AddReading("snapshots", m_sensorData->snapshotValidCtr);
   AddReading("ADCclipping", m_sensorData->clippingCtr);
   AddReading("ADCpeak", (100 * (m_sensorData->ADCpeakSample > 2048 ? 2048 : m_sensorData->ADCpeakSample)) / 2048);
   AddReading("ADCoffset", m_sensorData->ADCoffset);

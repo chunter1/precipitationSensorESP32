@@ -38,7 +38,8 @@ public:
   uint32_t RbOvCtr;
   uint16_t ADCpeakSample;
   uint32_t snapshotCtr;
-  uint8_t clippingCtr;
+  uint32_t snapshotValidCtr;
+  uint16_t clippingCtr;
   uint8_t DomGroupMagAVGkorr;
   uint8_t DomGroupMagAboveThreshCnt;
   float preciAmount;

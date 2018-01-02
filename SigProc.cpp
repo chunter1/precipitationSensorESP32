@@ -326,41 +326,45 @@ void IRAM_ATTR SigProc::onTimer()
 
 void SigProc::Handle()
 {
+  uint16_t clippingCtr_tmp;
+  
   while (SnapPending()) {
     
 #ifdef DEBUG    
     digitalWrite(DEBUG_GPIO_MAIN, HIGH);
 #endif
 
+    m_sensorData->snapshotCtr++;
+    clippingCtr_tmp = m_sensorData->clippingCtr;
     Calc();
 
-    // check if no ringbuffer overflow occurred before or during signal processing
-    if (!RbOvFlag) {
-      m_statistics->Calc();
-      m_sensorData->snapshotCtr++;
-
-      // 25 ms snapshot interval --> 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
-      if (m_sensorData->snapshotCtr >= (40 * publishInterval)) {
-        m_statistics->Finalize();
-        m_publisher->Publish(m_sensorData);
-        
-#ifdef DEBUG
-        // FOR DEBUG PURPOSE ONLY
-        StopCapture();
-        //DebugConsoleOutSamples(0, 40);
-        DebugConsoleOutBins(0, 7);
-        DebugConsoleOutBins(120, 127);
-        DebugConsoleOutBins(248, 255);
-        DebugConsoleOutBins(376, 383);
-        DebugConsoleOutBins(504, 511);
-        StartCapture();
-#endif
-
-        m_statistics->Reset();
-      }
-    } else {
+    // check if neither clipping nor ringbuffer overflows occurred before or during signal processing
+    if (RbOvFlag) {
       m_sensorData->RbOvCtr++;
       RbOvFlag = 0;
+    } else if (m_sensorData->clippingCtr == clippingCtr_tmp) {
+      m_sensorData->snapshotValidCtr++;
+      m_statistics->Calc();
+    }
+
+    // 25 ms snapshot interval --> 1/0,025 ms = 40 snapshots/s (ringbuffer overflows ignored)
+    if (m_sensorData->snapshotCtr >= (40 * publishInterval)) {
+      m_statistics->Finalize();
+      m_publisher->Publish(m_sensorData);
+        
+#ifdef DEBUG
+      // FOR DEBUG PURPOSE ONLY
+      StopCapture();
+      //DebugConsoleOutSamples(0, 40);
+      DebugConsoleOutBins(0, 7);
+      DebugConsoleOutBins(120, 127);
+      DebugConsoleOutBins(248, 255);
+      DebugConsoleOutBins(376, 383);
+      DebugConsoleOutBins(504, 511);
+      StartCapture();
+#endif
+
+      m_statistics->Reset();
     }
 
 #ifdef DEBUG
@@ -588,7 +592,7 @@ void SigProc::FFT(int16_t *fr, int16_t *fi, uint16_t m) {
 }
 
 void SigProc::DebugConsoleOutSamples(uint16_t startIdx, uint16_t stopIdx) {
-  Serial.printf("\nSnapshots: %d   ADC-offset: %d   Clipping: %d   ADCpeak: %d\n", m_sensorData->snapshotCtr, m_sensorData->ADCoffset, m_sensorData->clippingCtr, m_sensorData->ADCpeakSample);
+  Serial.printf("\nSnapshots: %d   ADC-offset: %d   Clipping: %d   ADCpeak: %d\n", m_sensorData->snapshotValidCtr, m_sensorData->ADCoffset, m_sensorData->clippingCtr, m_sensorData->ADCpeakSample);
 
   if ((startIdx >= NR_OF_BINS) || (stopIdx >= NR_OF_BINS)) {
     Serial.println("Invalid sample index!");
@@ -608,7 +612,7 @@ void SigProc::DebugConsoleOutSamples(uint16_t startIdx, uint16_t stopIdx) {
 }
 
 void SigProc::DebugConsoleOutBins(uint16_t startIdx, uint16_t stopIdx) {
-  Serial.printf("\nSnapshots: %d\n", m_sensorData->snapshotCtr);
+  Serial.printf("\nSnapshots: %d\n", m_sensorData->snapshotValidCtr);
 
   if ((startIdx >= NR_OF_BINS) || (stopIdx >= NR_OF_BINS)) {
     Serial.println("Invalid bin index!");

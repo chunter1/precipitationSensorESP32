@@ -135,7 +135,7 @@ void Statistics::Finalize() {
   m_sensorData->magMax = 0;
   
   for (uint16_t binNr = 0; binNr < NR_OF_BINS; binNr++) {
-    m_sensorData->bin[binNr].magAVG = m_sensorData->bin[binNr].magSum / m_sensorData->snapshotCtr;
+    m_sensorData->bin[binNr].magAVG = m_sensorData->bin[binNr].magSum / m_sensorData->snapshotValidCtr;
     m_sensorData->bin[binNr].magAVGkorr = m_sensorData->bin[binNr].magAVG / dropInFOVsnapshots[binNr];
 
     if (binNr > 0) {
@@ -173,8 +173,8 @@ void Statistics::Finalize() {
       }
       nrOfBinsInGroup++;
     }
-    m_sensorData->binGroup[binGroupNr].magAVG = magSumGroup / (float)nrOfBinsInGroup / (float)m_sensorData->snapshotCtr;
-    m_sensorData->binGroup[binGroupNr].magAVGkorr = magSumGroupKorr / (float)nrOfBinsInGroup / (float)m_sensorData->snapshotCtr;
+    m_sensorData->binGroup[binGroupNr].magAVG = magSumGroup / (float)nrOfBinsInGroup / (float)m_sensorData->snapshotValidCtr;
+    m_sensorData->binGroup[binGroupNr].magAVGkorr = magSumGroupKorr / (float)nrOfBinsInGroup / (float)m_sensorData->snapshotValidCtr;
 
     if (m_sensorData->binGroup[binGroupNr].magAVGkorr > maxMagAVGkorr) {
       maxMagAVGkorr = m_sensorData->binGroup[binGroupNr].magAVGkorr;
@@ -232,5 +232,6 @@ void Statistics::Reset()
   m_sensorData->clippingCtr = 0;
   m_sensorData->RbOvCtr = 0;
   m_sensorData->snapshotCtr = 0;
+  m_sensorData->snapshotValidCtr = 0;
 }
 
